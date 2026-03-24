@@ -16,7 +16,10 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/tobias/ai-agent-log-hub/backend/internal/config"
+	"github.com/tobias/ai-agent-log-hub/backend/internal/handler"
 	"github.com/tobias/ai-agent-log-hub/backend/internal/middleware"
+	"github.com/tobias/ai-agent-log-hub/backend/internal/repository"
+	"github.com/tobias/ai-agent-log-hub/backend/internal/service"
 )
 
 func makeHealthzHandler(pool *pgxpool.Pool) http.HandlerFunc {
@@ -114,12 +117,22 @@ func main() {
 	// Public endpoints (no auth)
 	r.Get("/healthz", makeHealthzHandler(pool))
 
+	// Build repos, services, and handlers.
+	agentRepo := repository.NewAgentRepo(pool)
+	sessionRepo := repository.NewSessionRepo(pool)
+	agentEventRepo := repository.NewAgentEventRepo(pool)
+
+	agentService := service.NewAgentService(agentRepo)
+	sessionService := service.NewSessionService(sessionRepo, agentRepo)
+
+	eventHandler := handler.NewEventHandler(agentService, sessionService, agentEventRepo)
+
 	// API routes (auth applied per group in future tasks)
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(middleware.Auth(middleware.AuthConfig{
 			Enabled: cfg.AuthEnabled,
 		}))
-		// Endpoints will be added in TASK-6+
+		r.Post("/events", eventHandler.IngestEvents)
 	})
 
 	slog.Info("starting server", "port", cfg.APIPort)
