@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/tobias/ai-agent-log-hub/backend/internal/config"
 )
 
 func makeHealthzHandler(pool *pgxpool.Pool) http.HandlerFunc {
@@ -37,29 +39,31 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	var pool *pgxpool.Pool
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL != "" {
-		var err error
-		pool, err = pgxpool.New(context.Background(), dbURL)
-		if err != nil {
-			slog.Error("failed to create connection pool", "error", err)
-		} else {
-			defer pool.Close()
-			slog.Info("database connection pool created")
+	cfg, err := config.Load()
+	if err != nil {
+		slog.Error("failed to load config", "error", err)
+		os.Exit(1)
+	}
+
+	// Log config safely
+	for _, entry := range cfg.Describe() {
+		if entry.Value != "" && entry.Value != entry.Default {
+			slog.Info("config", "key", entry.Name, "value", entry.Value)
 		}
+	}
+
+	var pool *pgxpool.Pool
+	pool, err = pgxpool.New(context.Background(), cfg.DatabaseURL)
+	if err != nil {
+		slog.Error("failed to create connection pool", "error", err)
 	} else {
-		slog.Warn("DATABASE_URL not set, running without database")
+		defer pool.Close()
+		slog.Info("database connection pool created")
 	}
 
 	r := chi.NewRouter()
 	r.Get("/healthz", makeHealthzHandler(pool))
 
-	port := os.Getenv("API_PORT")
-	if port == "" {
-		port = "4800"
-	}
-
-	slog.Info("starting server", "port", port)
-	log.Fatal(http.ListenAndServe(":"+port, r))
+	slog.Info("starting server", "port", cfg.APIPort)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", cfg.APIPort), r))
 }
