@@ -16,6 +16,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/tobias/ai-agent-log-hub/backend/internal/config"
+	"github.com/tobias/ai-agent-log-hub/backend/internal/middleware"
 )
 
 func makeHealthzHandler(pool *pgxpool.Pool) http.HandlerFunc {
@@ -88,8 +89,38 @@ func main() {
 		slog.Info("database connection pool created")
 	}
 
+	// CORS config: open when auth disabled, strict when enabled
+	corsOrigin := "*"
+	corsCredentials := false
+	if cfg.AuthEnabled {
+		corsOrigin = cfg.FrontendURL
+		corsCredentials = true
+	}
+
 	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recover)
+	r.Use(middleware.CORS(middleware.CORSConfig{
+		AllowOrigin:      corsOrigin,
+		AllowCredentials: corsCredentials,
+	}))
+	r.Use(middleware.RateLimit(middleware.RateLimitConfig{
+		Enabled:    cfg.AuthEnabled,
+		RatePerSec: 100,
+		Burst:      100,
+	}))
+
+	// Public endpoints (no auth)
 	r.Get("/healthz", makeHealthzHandler(pool))
+
+	// API routes (auth applied per group in future tasks)
+	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(middleware.Auth(middleware.AuthConfig{
+			Enabled: cfg.AuthEnabled,
+		}))
+		// Endpoints will be added in TASK-6+
+	})
 
 	slog.Info("starting server", "port", cfg.APIPort)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", cfg.APIPort), r))
