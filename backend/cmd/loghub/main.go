@@ -11,6 +11,9 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/tobias/ai-agent-log-hub/backend/internal/config"
 )
@@ -35,6 +38,26 @@ func makeHealthzHandler(pool *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
+func runMigrations(dbURL string) error {
+	migrationsPath := os.Getenv("MIGRATIONS_PATH")
+	if migrationsPath == "" {
+		migrationsPath = "migrations"
+	}
+	m, err := migrate.New("file://"+migrationsPath, dbURL)
+	if err != nil {
+		return fmt.Errorf("create migrator: %w", err)
+	}
+	defer m.Close()
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("run migrations: %w", err)
+	}
+
+	version, dirty, _ := m.Version()
+	slog.Info("migrations complete", "version", version, "dirty", dirty)
+	return nil
+}
+
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
@@ -45,11 +68,15 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Log config safely
 	for _, entry := range cfg.Describe() {
 		if entry.Value != "" && entry.Value != entry.Default {
 			slog.Info("config", "key", entry.Name, "value", entry.Value)
 		}
+	}
+
+	if err := runMigrations(cfg.DatabaseURL); err != nil {
+		slog.Error("migration failed", "error", err)
+		os.Exit(1)
 	}
 
 	var pool *pgxpool.Pool

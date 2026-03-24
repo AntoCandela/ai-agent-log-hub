@@ -24,6 +24,7 @@ services:
     environment:
       DATABASE_URL: postgres://loghub:${POSTGRES_PASSWORD:-loghub_dev}@db:5432/loghub?sslmode=disable
       API_PORT: '4800'
+      MIGRATIONS_PATH: /migrations
     ports:
       - '4800:4800'
 
