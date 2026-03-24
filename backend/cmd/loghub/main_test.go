@@ -9,14 +9,14 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func newRouter() *chi.Mux {
+func newTestRouter() *chi.Mux {
 	r := chi.NewRouter()
-	r.Get("/healthz", healthzHandler)
+	r.Get("/healthz", makeHealthzHandler(nil))
 	return r
 }
 
 func TestHealthz_ReturnsOKStatus(t *testing.T) {
-	srv := httptest.NewServer(newRouter())
+	srv := httptest.NewServer(newTestRouter())
 	defer srv.Close()
 
 	resp, err := http.Get(srv.URL + "/healthz")
@@ -40,5 +40,9 @@ func TestHealthz_ReturnsOKStatus(t *testing.T) {
 
 	if body["status"] != "ok" {
 		t.Errorf("expected status \"ok\", got %q", body["status"])
+	}
+
+	if body["db"] != "disconnected" {
+		t.Errorf("expected db \"disconnected\" when pool is nil, got %q", body["db"])
 	}
 }
