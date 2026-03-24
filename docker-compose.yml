@@ -3,7 +3,7 @@ services:
     image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: loghub
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-loghub_dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: loghub
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -22,7 +22,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://loghub:${POSTGRES_PASSWORD:-loghub_dev}@db:5432/loghub?sslmode=disable
+      DATABASE_URL: postgres://loghub:${POSTGRES_PASSWORD}@db:5432/loghub?sslmode=disable
       API_PORT: '4800'
       MIGRATIONS_PATH: /migrations
     ports:

@@ -17,6 +17,7 @@ Think "Datadog for AI agents" — where agents can also query their own logs as 
 ## Quick Start
 
 ```bash
+cp .env.example .env   # then edit .env to set POSTGRES_PASSWORD
 docker compose up
 ```
 
