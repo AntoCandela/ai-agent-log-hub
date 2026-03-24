@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/tobias/ai-agent-log-hub/backend/internal/model"
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
 )
 
 // AgentRepo provides database access for agent records.

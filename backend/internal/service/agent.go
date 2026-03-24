@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tobias/ai-agent-log-hub/backend/internal/model"
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
 )
 
 // agentRepo is the minimal interface AgentService needs from the repository layer.

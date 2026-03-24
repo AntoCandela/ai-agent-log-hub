@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/tobias/ai-agent-log-hub/backend/internal/model"
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
 )
 
 // ── mocks ──

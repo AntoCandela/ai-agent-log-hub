@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/tobias/ai-agent-log-hub/backend/internal/model"
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
 )
 
 // mockInserter records calls to InsertBatch for assertions.

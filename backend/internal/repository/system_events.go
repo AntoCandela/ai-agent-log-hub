@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/tobias/ai-agent-log-hub/backend/internal/model"
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
 )
 
 type SystemEventRepo struct {

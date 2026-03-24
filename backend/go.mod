@@ -1,4 +1,4 @@
-module github.com/tobias/ai-agent-log-hub/backend
+module github.com/AntoCandela/ai-agent-log-hub/backend
 
 go 1.25.0
 

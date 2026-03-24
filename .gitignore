@@ -36,3 +36,13 @@ vendor/
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude / AI tooling
+.claude/
+docs/superpowers/
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
