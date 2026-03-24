@@ -1,3 +1,31 @@
-# AI Agent Log Hub — Docker Compose
-# TASK-2 will populate this with db and backend services.
-# Quick start: docker compose up
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: loghub
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-loghub_dev}
+      POSTGRES_DB: loghub
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: pg_isready -U loghub
+      interval: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://loghub:${POSTGRES_PASSWORD:-loghub_dev}@db:5432/loghub?sslmode=disable
+      API_PORT: '4800'
+    ports:
+      - '4800:4800'
+
+volumes:
+  pgdata:
