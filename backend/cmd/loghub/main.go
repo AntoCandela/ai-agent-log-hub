@@ -18,6 +18,7 @@ import (
 	"github.com/tobias/ai-agent-log-hub/backend/internal/config"
 	"github.com/tobias/ai-agent-log-hub/backend/internal/handler"
 	"github.com/tobias/ai-agent-log-hub/backend/internal/middleware"
+	"github.com/tobias/ai-agent-log-hub/backend/internal/otlp"
 	"github.com/tobias/ai-agent-log-hub/backend/internal/repository"
 	"github.com/tobias/ai-agent-log-hub/backend/internal/service"
 )
@@ -121,11 +122,17 @@ func main() {
 	agentRepo := repository.NewAgentRepo(pool)
 	sessionRepo := repository.NewSessionRepo(pool)
 	agentEventRepo := repository.NewAgentEventRepo(pool)
+	systemEventRepo := repository.NewSystemEventRepo(pool)
 
 	agentService := service.NewAgentService(agentRepo)
 	sessionService := service.NewSessionService(sessionRepo, agentRepo)
 
 	eventHandler := handler.NewEventHandler(agentService, sessionService, agentEventRepo)
+	otlpHandler := otlp.NewOTLPHandler(systemEventRepo)
+
+	// OTLP receivers (no auth — telemetry endpoints)
+	r.Post("/v1/traces", otlpHandler.TracesHandler)
+	r.Post("/v1/logs", otlpHandler.LogsHandler)
 
 	// API routes (auth applied per group in future tasks)
 	r.Route("/api/v1", func(r chi.Router) {
@@ -134,6 +141,20 @@ func main() {
 		}))
 		r.Post("/events", eventHandler.IngestEvents)
 	})
+
+	// Background: periodically link system events to sessions via trace_id.
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			linked, err := systemEventRepo.LinkToSessions(context.Background())
+			if err != nil {
+				slog.Error("correlation worker failed", "error", err)
+			} else if linked > 0 {
+				slog.Info("correlation worker linked events", "count", linked)
+			}
+		}
+	}()
 
 	slog.Info("starting server", "port", cfg.APIPort)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", cfg.APIPort), r))
