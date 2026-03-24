@@ -1,23 +1,22 @@
+version: "2"
+
 run:
   timeout: 5m
 
 linters:
   enable:
-    - errcheck        # Check for unchecked errors
-    - govet           # Go vet examines source code
-    - staticcheck     # Advanced static analysis
-    - unused          # Find unused code
-    - ineffassign     # Detect ineffectual assignments
-    - typecheck       # Type-check Go code
-    - gosimple        # Simplify code
-    - gocritic        # Opinionated linter
-    - gofmt           # Check formatting
-    - goimports       # Check import ordering
-    - misspell        # Find misspelled words
-    - bodyclose       # Check HTTP body is closed
-    - exportloopref   # Check for loop variable capture
-    - nilerr          # Find code returning nil instead of error
-    - predeclared     # Find shadowed predeclared identifiers
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+    - gosimple
+    - gocritic
+    - gofmt
+    - goimports
+    - misspell
+    - nilerr
+    - predeclared
 
 linters-settings:
   gocritic:
@@ -25,18 +24,13 @@ linters-settings:
       - diagnostic
       - performance
     disabled-checks:
-      - hugeParam      # Not useful for handler signatures
-  errcheck:
-    exclude-functions:
-      - (net/http.ResponseWriter).Write  # Common pattern in HTTP handlers
-      - encoding/json.NewEncoder.Encode  # Common pattern in HTTP handlers
+      - hugeParam
 
 issues:
-  exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
   exclude-rules:
     - path: _test\.go
       linters:
-        - errcheck     # Tests don't always check errors
+        - errcheck
         - gocritic

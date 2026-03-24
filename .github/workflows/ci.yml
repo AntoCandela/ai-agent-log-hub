@@ -26,11 +26,10 @@ jobs:
       - name: Run go vet
         run: cd backend && go vet ./...
 
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
-          working-directory: backend
+      - name: Install and run golangci-lint
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+          cd backend && golangci-lint run ./...
 
   test:
     name: Test
