@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
+	"github.com/google/uuid"
 )
 
 // SystemEventInserter is satisfied by repository.SystemEventRepo.
@@ -74,14 +74,14 @@ type scopeSpan struct {
 }
 
 type otlpSpan struct {
-	TraceID            string         `json:"traceId"`
-	SpanID             string         `json:"spanId"`
-	ParentSpanID       string         `json:"parentSpanId"`
-	Name               string         `json:"name"`
-	StartTimeUnixNano  string         `json:"startTimeUnixNano"`
-	EndTimeUnixNano    string         `json:"endTimeUnixNano"`
-	Status             otlpStatus     `json:"status"`
-	Attributes         []otlpKeyValue `json:"attributes"`
+	TraceID           string         `json:"traceId"`
+	SpanID            string         `json:"spanId"`
+	ParentSpanID      string         `json:"parentSpanId"`
+	Name              string         `json:"name"`
+	StartTimeUnixNano string         `json:"startTimeUnixNano"`
+	EndTimeUnixNano   string         `json:"endTimeUnixNano"`
+	Status            otlpStatus     `json:"status"`
+	Attributes        []otlpKeyValue `json:"attributes"`
 }
 
 type otlpStatus struct {

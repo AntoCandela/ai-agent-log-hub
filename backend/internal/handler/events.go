@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
+	"github.com/google/uuid"
 )
 
 // AgentEnsurer validates and upserts an agent record.
@@ -72,9 +72,9 @@ type EventInput struct {
 var validEventTypes = map[string]bool{
 	"tool_call":    true,
 	"explicit_log": true,
-	"git_commit":  true,
-	"file_change": true,
-	"error":       true,
+	"git_commit":   true,
+	"file_change":  true,
+	"error":        true,
 }
 
 var validSeverities = map[string]bool{

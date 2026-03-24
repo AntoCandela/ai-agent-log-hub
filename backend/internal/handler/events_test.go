@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
+	"github.com/google/uuid"
 )
 
 // ── mocks ──

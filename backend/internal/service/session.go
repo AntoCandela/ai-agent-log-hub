@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
+	"github.com/google/uuid"
 )
 
 // sessionRepo is the minimal interface SessionService needs from the repository layer.

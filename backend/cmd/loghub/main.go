@@ -10,17 +10,17 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/config"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/handler"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/middleware"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/otlp"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/repository"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/service"
+	"github.com/go-chi/chi/v5"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func makeHealthzHandler(pool *pgxpool.Pool) http.HandlerFunc {
