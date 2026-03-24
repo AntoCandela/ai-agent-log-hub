@@ -1,0 +1,38 @@
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/backend/cmd/loghub/loghub
+/backend/loghub
+
+# Test
+*.test
+*.out
+coverage.html
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database
+*.sqlite
+*.sqlite3
+pgdata/
+
+# Dependencies
+node_modules/
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
