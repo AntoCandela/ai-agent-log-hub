@@ -6,6 +6,10 @@
 *.dylib
 /backend/cmd/loghub/loghub
 /backend/loghub
+/mcp/loghub-mcp
+/mcp/cmd/loghub-mcp/loghub-mcp
+/hooks/loghub-hook
+/hooks/cmd/loghub-hook/loghub-hook
 
 # Test
 *.test
