@@ -134,6 +134,8 @@ func main() {
 	blameHandler := handler.NewBlameHandler(agentEventRepo)
 	systemHandler := handler.NewSystemHandler(systemEventRepo)
 	traceHandler := handler.NewTraceHandler(agentEventRepo, systemEventRepo)
+	memoryRepo := repository.NewMemoryRepo(pool)
+	memoryHandler := handler.NewMemoryHandler(memoryRepo, nil, nil)
 	otlpHandler := otlp.NewOTLPHandler(systemEventRepo)
 
 	// OTLP receivers (no auth — telemetry endpoints)
@@ -151,6 +153,13 @@ func main() {
 		r.Get("/logs/blame", blameHandler.GetBlame)
 		r.Get("/system", systemHandler.QuerySystem)
 		r.Get("/traces/{traceID}", traceHandler.GetTrace)
+		r.Route("/memory", func(r chi.Router) {
+			r.Post("/", memoryHandler.StoreMemory)
+			r.Post("/search", memoryHandler.SearchMemory)
+			r.Post("/recall", memoryHandler.RecallMemory)
+			r.Get("/", memoryHandler.ListMemories)
+			r.Delete("/{key}", memoryHandler.DeleteMemory)
+		})
 		r.Route("/sessions", func(r chi.Router) {
 			r.Get("/", sessionHandler.ListSessions)
 			r.Route("/{sessionID}", func(r chi.Router) {

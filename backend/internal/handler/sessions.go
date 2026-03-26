@@ -18,10 +18,16 @@ type SessionLister interface {
 	GetByID(ctx context.Context, sessionID uuid.UUID) (*model.Session, error)
 }
 
+// SummaryLister abstracts the summary query methods for testability.
+type SummaryLister interface {
+	GetBySessionID(ctx context.Context, sessionID uuid.UUID) (*model.SessionSummary, error)
+}
+
 // SessionHandler serves the /api/v1/sessions endpoints.
 type SessionHandler struct {
 	sessionRepo SessionLister
 	eventRepo   LogQuerier
+	summaryRepo SummaryLister // nil = return placeholder summary
 }
 
 // NewSessionHandler creates a SessionHandler with the given dependencies.
@@ -30,6 +36,11 @@ func NewSessionHandler(sessionRepo SessionLister, eventRepo LogQuerier) *Session
 		sessionRepo: sessionRepo,
 		eventRepo:   eventRepo,
 	}
+}
+
+// SetSummaryRepo attaches a summary repository for real summary lookups.
+func (h *SessionHandler) SetSummaryRepo(repo SummaryLister) {
+	h.summaryRepo = repo
 }
 
 // ListSessions handles GET /api/v1/sessions.
@@ -177,7 +188,8 @@ func (h *SessionHandler) GetSessionFiles(w http.ResponseWriter, r *http.Request)
 }
 
 // GetSessionSummary handles GET /api/v1/sessions/{sessionID}/summary.
-// This is a placeholder; full summary generation comes in TASK-19.
+// Returns the full generated summary if available, otherwise falls back to
+// basic session metadata.
 func (h *SessionHandler) GetSessionSummary(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "sessionID")
 	sessionID, err := uuid.Parse(idStr)
@@ -186,6 +198,23 @@ func (h *SessionHandler) GetSessionSummary(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Try to return the real summary if the repo is configured.
+	if h.summaryRepo != nil {
+		summary, err := h.summaryRepo.GetBySessionID(r.Context(), sessionID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "query failed: "+err.Error())
+			return
+		}
+		if summary != nil {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]any{
+				"data": summary,
+			})
+			return
+		}
+	}
+
+	// Fallback: return basic session info when no summary exists yet.
 	session, err := h.sessionRepo.GetByID(r.Context(), sessionID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "query failed: "+err.Error())
