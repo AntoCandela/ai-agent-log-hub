@@ -218,7 +218,7 @@ func (r *AgentEventRepo) Query(ctx context.Context, filters EventFilters) ([]mod
 		order = "ASC"
 	}
 
-	listArgs := append(args, limit, filters.Offset)
+	listArgs := append(append([]any{}, args...), limit, filters.Offset)
 	query := fmt.Sprintf(
 		`SELECT event_id, session_id, agent_id, trace_id, span_id, parent_span_id,
 		        timestamp, event_type, severity, tool_name, tool_type, mcp_server, message,

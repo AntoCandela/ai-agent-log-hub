@@ -162,7 +162,7 @@ func TestStoreMemory(t *testing.T) {
 	}
 
 	// Verify memory in store.
-	mem, _ := store.GetByKey(nil, "agent-1", "user_pref")
+	mem, _ := store.GetByKey(context.Background(), "agent-1", "user_pref")
 	if mem == nil {
 		t.Fatal("memory not found in store")
 	}

@@ -162,7 +162,7 @@ func (r *SystemEventRepo) Query(ctx context.Context, filters SystemEventFilters)
 		order = "ASC"
 	}
 
-	listArgs := append(args, limit, filters.Offset)
+	listArgs := append(append([]any{}, args...), limit, filters.Offset)
 	query := fmt.Sprintf(
 		`SELECT event_id, timestamp, trace_id, span_id, parent_span_id,
 		        source_type, source_service, severity, event_name, message,

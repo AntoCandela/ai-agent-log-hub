@@ -109,7 +109,7 @@ func (r *MemoryRepo) List(ctx context.Context, agentID string, tags []string, li
 		limit = 1000
 	}
 
-	listArgs := append(args, limit, offset)
+	listArgs := append(append([]any{}, args...), limit, offset)
 	query := fmt.Sprintf(
 		`SELECT memory_id, agent_id, session_id, key, value, tags, shared, created_at, updated_at
 		 FROM memories%s ORDER BY updated_at DESC LIMIT $%d OFFSET $%d`,

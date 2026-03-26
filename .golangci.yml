@@ -21,6 +21,10 @@ linters:
     - predeclared
 
 linters-settings:
+  errcheck:
+    exclude-functions:
+      - (*encoding/json.Encoder).Encode
+      - (io.Closer).Close
   gocritic:
     enabled-tags:
       - diagnostic
