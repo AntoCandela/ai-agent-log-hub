@@ -130,6 +130,10 @@ func main() {
 	eventHandler := handler.NewEventHandler(agentService, sessionService, agentEventRepo)
 	logHandler := handler.NewLogHandler(agentEventRepo)
 	sessionHandler := handler.NewSessionHandler(sessionRepo, agentEventRepo)
+	errorHandler := handler.NewErrorHandler(agentEventRepo)
+	blameHandler := handler.NewBlameHandler(agentEventRepo)
+	systemHandler := handler.NewSystemHandler(systemEventRepo)
+	traceHandler := handler.NewTraceHandler(agentEventRepo, systemEventRepo)
 	otlpHandler := otlp.NewOTLPHandler(systemEventRepo)
 
 	// OTLP receivers (no auth — telemetry endpoints)
@@ -143,6 +147,10 @@ func main() {
 		}))
 		r.Post("/events", eventHandler.IngestEvents)
 		r.Get("/logs", logHandler.QueryLogs)
+		r.Get("/logs/errors", errorHandler.SearchErrors)
+		r.Get("/logs/blame", blameHandler.GetBlame)
+		r.Get("/system", systemHandler.QuerySystem)
+		r.Get("/traces/{traceID}", traceHandler.GetTrace)
 		r.Route("/sessions", func(r chi.Router) {
 			r.Get("/", sessionHandler.ListSessions)
 			r.Route("/{sessionID}", func(r chi.Router) {
