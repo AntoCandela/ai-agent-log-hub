@@ -1,3 +1,14 @@
+// Package handler provides HTTP request handlers for the ai-agent-log-hub REST API.
+//
+// Each handler struct owns a set of interface dependencies (repositories, services)
+// that are injected at construction time. This design lets us swap real implementations
+// for test doubles (fakes/mocks) in unit tests without changing handler logic.
+//
+// Every handler method follows the standard Go HTTP signature:
+//
+//	func(w http.ResponseWriter, r *http.Request)
+//
+// so it plugs directly into any router that accepts http.HandlerFunc (e.g. chi).
 package handler
 
 import (
@@ -14,21 +25,37 @@ import (
 )
 
 // AgentEnsurer validates and upserts an agent record.
+// If the agent already exists in the database, this is a no-op.
+// If not, a new agent row is created so that foreign-key constraints
+// on events and sessions are satisfied.
+//
+// This is an interface (rather than a concrete type) so tests can
+// provide a lightweight stub instead of a real database connection.
 type AgentEnsurer interface {
 	EnsureExists(ctx context.Context, agentID string) error
 }
 
 // SessionResolver finds or creates the active session for a given agent + token.
+// A "session" groups related events together (e.g. one coding task).
+// The session_token acts as a client-supplied correlation key; if a session
+// with the same (agent_id, session_token) already exists and is still active,
+// it is returned. Otherwise a new session is created.
+//
+// projectDir and gitBranch are optional metadata attached to the session.
 type SessionResolver interface {
 	ResolveSession(ctx context.Context, agentID, sessionToken string, projectDir, gitBranch *string) (*model.Session, error)
 }
 
-// EventInserter persists a batch of events.
+// EventInserter persists a batch of events to the database.
+// It returns how many events were accepted (inserted) and how many were
+// duplicates (skipped because their event_id already existed).
 type EventInserter interface {
 	InsertBatch(ctx context.Context, events []model.AgentEvent) (accepted, duplicates int, err error)
 }
 
 // EventHandler serves the POST /api/v1/events endpoint.
+// It orchestrates the full ingestion pipeline: validate input, ensure the
+// agent exists, resolve the session, and finally insert the events.
 type EventHandler struct {
 	agentService   AgentEnsurer
 	sessionService SessionResolver
@@ -36,6 +63,7 @@ type EventHandler struct {
 }
 
 // NewEventHandler creates an EventHandler with the given dependencies.
+// All three dependencies are required; passing nil will cause panics at runtime.
 func NewEventHandler(agents AgentEnsurer, sessions SessionResolver, events EventInserter) *EventHandler {
 	return &EventHandler{
 		agentService:   agents,
@@ -45,6 +73,10 @@ func NewEventHandler(agents AgentEnsurer, sessions SessionResolver, events Event
 }
 
 // EventInput is the JSON shape accepted from callers.
+// Pointer fields (e.g. *string) are optional: they will be nil when the
+// caller omits them from the JSON payload. json.RawMessage fields (Params,
+// Result, Context) store arbitrary nested JSON without parsing it into a
+// Go struct -- the backend just passes them through to the database.
 type EventInput struct {
 	EventID      string          `json:"event_id"`
 	AgentID      string          `json:"agent_id"`
@@ -69,6 +101,9 @@ type EventInput struct {
 	SpawnedBy    *string         `json:"spawned_by"`
 }
 
+// validEventTypes is a look-up set of allowed event_type values.
+// Using a map[string]bool lets us check membership with a single map access
+// (e.g. validEventTypes["tool_call"] == true).
 var validEventTypes = map[string]bool{
 	"tool_call":    true,
 	"explicit_log": true,
@@ -77,6 +112,7 @@ var validEventTypes = map[string]bool{
 	"error":        true,
 }
 
+// validSeverities is a look-up set of allowed severity levels.
 var validSeverities = map[string]bool{
 	"debug": true,
 	"info":  true,
@@ -84,12 +120,27 @@ var validSeverities = map[string]bool{
 	"error": true,
 }
 
+// maxBatchSize caps the number of events that can be sent in a single request
+// to prevent excessively large payloads from overwhelming the server.
 const maxBatchSize = 100
 
 // IngestEvents handles POST /api/v1/events.
+//
+// The validation flow proceeds in several phases:
+//  1. Read and trim the raw request body.
+//  2. Detect whether the body is a single JSON object or an array, and
+//     unmarshal accordingly (this lets callers send one event or many).
+//  3. Validate each event: required fields, timestamp format, enum values.
+//     Any validation failure rejects the entire batch (no partial inserts).
+//  4. Auto-generate missing event_id (UUID) and default severity to "info".
+//  5. Ensure each unique agent_id exists in the agents table.
+//  6. Resolve each unique (agent_id, session_token) pair to a session row.
+//  7. Map the validated inputs to model.AgentEvent structs and insert them.
+//  8. Return a 201 response with accepted/duplicate counts and the session_id.
 func (h *EventHandler) IngestEvents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	// Phase 1: Read the raw body bytes so we can inspect the first character.
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "failed to read request body")
@@ -102,7 +153,8 @@ func (h *EventHandler) IngestEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Detect single object vs array.
+	// Phase 2: Detect single object vs array by peeking at the first byte.
+	// '{' means a single event; '[' means an array of events.
 	var inputs []EventInput
 	if body[0] == '{' {
 		var single EventInput
@@ -132,7 +184,7 @@ func (h *EventHandler) IngestEvents(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now()
 
-	// Validate each event.
+	// Phase 3 & 4: Validate each event and apply defaults.
 	for i := range inputs {
 		inp := &inputs[i]
 
@@ -154,6 +206,7 @@ func (h *EventHandler) IngestEvents(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("event[%d]: invalid timestamp: %s", i, err.Error()))
 			return
 		}
+		// Reject timestamps too far in the future to guard against clock skew.
 		if ts.After(now.Add(time.Hour)) {
 			writeError(w, http.StatusBadRequest, fmt.Sprintf("event[%d]: timestamp is more than 1 hour in the future", i))
 			return
@@ -164,6 +217,7 @@ func (h *EventHandler) IngestEvents(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		// Default severity to "info" when the caller omits it.
 		if inp.Severity == "" {
 			inp.Severity = "info"
 		}
@@ -172,7 +226,7 @@ func (h *EventHandler) IngestEvents(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Generate event_id if missing.
+		// Generate event_id if missing, so callers don't have to create UUIDs.
 		if inp.EventID == "" {
 			inp.EventID = uuid.New().String()
 		} else {
@@ -182,13 +236,14 @@ func (h *EventHandler) IngestEvents(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		// Default session_token to agent_id if missing.
+		// Default session_token to agent_id if missing, creating a 1:1 mapping.
 		if inp.SessionToken == "" {
 			inp.SessionToken = inp.AgentID
 		}
 	}
 
-	// EnsureExists for each unique agent_id.
+	// Phase 5: EnsureExists for each unique agent_id.
+	// We track which agents we've already checked to avoid duplicate DB calls.
 	agentsSeen := make(map[string]bool)
 	for _, inp := range inputs {
 		if !agentsSeen[inp.AgentID] {
@@ -200,7 +255,8 @@ func (h *EventHandler) IngestEvents(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// ResolveSession for each unique (agent_id, session_token).
+	// Phase 6: ResolveSession for each unique (agent_id, session_token) pair.
+	// sessionKey is a local struct used as a map key for deduplication.
 	type sessionKey struct{ agentID, token string }
 	sessionMap := make(map[sessionKey]*model.Session)
 	for _, inp := range inputs {
@@ -215,7 +271,7 @@ func (h *EventHandler) IngestEvents(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Map inputs to model.AgentEvent.
+	// Phase 7: Map validated inputs to model.AgentEvent structs.
 	events := make([]model.AgentEvent, len(inputs))
 	var lastSessionID uuid.UUID
 	for i, inp := range inputs {
@@ -226,6 +282,7 @@ func (h *EventHandler) IngestEvents(w http.ResponseWriter, r *http.Request) {
 		eventID := uuid.MustParse(inp.EventID)
 		ts, _ := time.Parse(time.RFC3339Nano, inp.Timestamp)
 
+		// Convert the optional spawned_by string to a *uuid.UUID pointer.
 		var spawnedBy *uuid.UUID
 		if inp.SpawnedBy != nil {
 			parsed := uuid.MustParse(*inp.SpawnedBy)
@@ -255,6 +312,7 @@ func (h *EventHandler) IngestEvents(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Phase 8: Persist events and return the result.
 	accepted, duplicates, err := h.eventRepo.InsertBatch(ctx, events)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to insert events: "+err.Error())
@@ -272,6 +330,10 @@ func (h *EventHandler) IngestEvents(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// writeError is a shared helper that sends a JSON error response.
+// It sets Content-Type, writes the HTTP status code, and encodes an
+// {"error": "..."} JSON body. Every handler in this package uses it
+// for consistent error formatting.
 func writeError(w http.ResponseWriter, status int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

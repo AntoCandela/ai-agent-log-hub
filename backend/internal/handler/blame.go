@@ -11,11 +11,16 @@ import (
 )
 
 // BlameQuerier abstracts the event query method for blame lookups.
+// Blame needs the same Query signature as other handlers, but only uses
+// the FilePath filter to find events that touched a specific file.
 type BlameQuerier interface {
 	Query(ctx context.Context, filters repository.EventFilters) ([]model.AgentEvent, int, error)
 }
 
 // BlameHandler serves the GET /api/v1/logs/blame endpoint.
+// "Blame" answers the question: "which agents (and sessions) recently
+// modified this file?" -- similar in spirit to "git blame" but for
+// AI agent activity.
 type BlameHandler struct {
 	eventRepo BlameQuerier
 }
@@ -26,6 +31,9 @@ func NewBlameHandler(eventRepo BlameQuerier) *BlameHandler {
 }
 
 // blameEntry represents a single file modification entry.
+// Each entry records which agent touched the file, in which session,
+// at what time, and (optionally) which tool was used and what message
+// was logged.
 type blameEntry struct {
 	AgentID   string  `json:"agent_id"`
 	SessionID string  `json:"session_id"`
@@ -35,6 +43,14 @@ type blameEntry struct {
 }
 
 // GetBlame handles GET /api/v1/logs/blame.
+//
+// Query parameters:
+//   - file (required): the file path to look up (e.g. "src/main.go").
+//   - depth (optional): how many recent modifications to return.
+//     Defaults to 5, maximum 100.
+//
+// The handler queries events that reference the given file path, orders
+// them newest-first, and returns a simplified list of blame entries.
 func (h *BlameHandler) GetBlame(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
@@ -44,6 +60,7 @@ func (h *BlameHandler) GetBlame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse the "depth" parameter (how many recent modifications to return).
 	depth := 5
 	if v := q.Get("depth"); v != "" {
 		n, err := strconv.Atoi(v)
@@ -55,6 +72,7 @@ func (h *BlameHandler) GetBlame(w http.ResponseWriter, r *http.Request) {
 		depth = 100
 	}
 
+	// Query events that reference this file, newest first.
 	filters := repository.EventFilters{
 		FilePath: &file,
 		Limit:    depth,
@@ -67,6 +85,7 @@ func (h *BlameHandler) GetBlame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Convert full event objects to lightweight blame entries.
 	entries := make([]blameEntry, 0, len(events))
 	for _, e := range events {
 		entries = append(entries, blameEntry{

@@ -14,11 +14,16 @@ import (
 )
 
 // LogQuerier abstracts the event query method for testability.
+// By depending on this small interface instead of the full repository struct,
+// the handler only sees the one method it needs, and tests can provide a
+// lightweight fake that returns canned data.
 type LogQuerier interface {
 	Query(ctx context.Context, filters repository.EventFilters) ([]model.AgentEvent, int, error)
 }
 
 // LogHandler serves the GET /api/v1/logs endpoint.
+// It translates HTTP query-string parameters into a repository.EventFilters
+// struct and delegates the actual database work to the LogQuerier dependency.
 type LogHandler struct {
 	eventRepo LogQuerier
 }
@@ -29,12 +34,34 @@ func NewLogHandler(eventRepo LogQuerier) *LogHandler {
 }
 
 // QueryLogs handles GET /api/v1/logs.
+//
+// Filter parsing:
+// Each supported query-string parameter is read individually from the URL.
+// Optional filters (session_id, agent_id, tool_name, etc.) are only set on
+// the EventFilters struct when the caller actually provides them. This means
+// an omitted parameter results in "no filter on that field" (the pointer
+// stays nil).
+//
+// Pagination:
+//   - "limit" defaults to 50, max 1000. Invalid values fall back to the default.
+//   - "offset" skips that many rows. Default 0.
+//   - The response includes "total_count" and "has_more" so the frontend can
+//     build pagination controls.
+//
+// Time range:
+//   - "since" and "until" accept RFC 3339 timestamps (e.g. "2025-01-15T00:00:00Z").
+//
+// Tags:
+//   - Comma-separated list, e.g. "tags=deploy,hotfix".
 func (h *LogHandler) QueryLogs(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
+	// Start with default ordering (newest first).
 	filters := repository.EventFilters{
 		Order: "desc",
 	}
+
+	// --- Optional filters: each block reads one query parameter ---
 
 	if v := q.Get("session_id"); v != "" {
 		id, err := uuid.Parse(v)
@@ -82,6 +109,7 @@ func (h *LogHandler) QueryLogs(w http.ResponseWriter, r *http.Request) {
 		filters.Until = &t
 	}
 	if v := q.Get("tags"); v != "" {
+		// Tags arrive as a comma-separated string and are split into a slice.
 		filters.Tags = strings.Split(v, ",")
 	}
 	if v := q.Get("order"); v == "asc" || v == "desc" {
@@ -103,7 +131,7 @@ func (h *LogHandler) QueryLogs(w http.ResponseWriter, r *http.Request) {
 	}
 	filters.Limit = limit
 
-	// Parse offset.
+	// Parse offset (number of rows to skip for pagination).
 	if v := q.Get("offset"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err == nil && n >= 0 {
@@ -111,16 +139,20 @@ func (h *LogHandler) QueryLogs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Execute the query against the repository.
 	events, total, err := h.eventRepo.Query(r.Context(), filters)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "query failed: "+err.Error())
 		return
 	}
 
+	// Ensure the JSON response contains an empty array [] instead of null
+	// when there are no matching events.
 	if events == nil {
 		events = []model.AgentEvent{}
 	}
 
+	// has_more tells the frontend whether additional pages exist.
 	hasMore := filters.Offset+len(events) < total
 
 	w.Header().Set("Content-Type", "application/json")

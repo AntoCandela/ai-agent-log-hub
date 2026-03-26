@@ -14,22 +14,29 @@ import (
 )
 
 // TraceQuerier abstracts agent event querying for trace lookups.
+// Traces cut across sessions -- a single trace_id can appear in events
+// from multiple agents, so this query is not scoped to a single session.
 type TraceQuerier interface {
 	Query(ctx context.Context, filters repository.EventFilters) ([]model.AgentEvent, int, error)
 }
 
 // SystemTraceQuerier abstracts system event querying by trace ID.
+// System events live in a separate table, so they need their own
+// lookup method rather than sharing the agent event query.
 type SystemTraceQuerier interface {
 	FindByTraceID(ctx context.Context, traceID string) ([]model.SystemEvent, error)
 }
 
 // TraceHandler serves the GET /api/v1/traces/{traceID} endpoint.
+// It merges events from two different "layers" (agent and system) into
+// a single unified timeline, sorted by timestamp.
 type TraceHandler struct {
 	agentRepo  TraceQuerier
 	systemRepo SystemTraceQuerier
 }
 
 // NewTraceHandler creates a TraceHandler with the given dependencies.
+// Both repositories are required to build the full cross-layer trace view.
 func NewTraceHandler(agentRepo TraceQuerier, systemRepo SystemTraceQuerier) *TraceHandler {
 	return &TraceHandler{
 		agentRepo:  agentRepo,
@@ -38,6 +45,10 @@ func NewTraceHandler(agentRepo TraceQuerier, systemRepo SystemTraceQuerier) *Tra
 }
 
 // traceSpan represents a unified span in the trace timeline.
+// It normalizes both agent events and system events into one shape so the
+// frontend can render a single timeline without caring about the source.
+// The "Source" field ("agent" or "system") tells the frontend which layer
+// the span came from.
 type traceSpan struct {
 	Source       string          `json:"source"`
 	EventID      uuid.UUID       `json:"event_id"`
@@ -54,6 +65,16 @@ type traceSpan struct {
 }
 
 // GetTrace handles GET /api/v1/traces/{traceID}.
+//
+// Cross-layer trace merging:
+//  1. Fetch all agent events that share this trace_id (up to 1000).
+//  2. Fetch all system events that share this trace_id.
+//  3. Convert both sets into a common traceSpan struct.
+//     - Agent events populate EventType, ToolName, and use Params as Details.
+//     - System events populate EventName and use Attributes as Details.
+//  4. Merge the two slices and sort by timestamp ascending so the frontend
+//     receives a chronologically ordered timeline.
+//  5. Return the merged list along with the trace_id and total span count.
 func (h *TraceHandler) GetTrace(w http.ResponseWriter, r *http.Request) {
 	traceID := chi.URLParam(r, "traceID")
 	if traceID == "" {
@@ -63,7 +84,7 @@ func (h *TraceHandler) GetTrace(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	// Query agent events by trace_id.
+	// Step 1: Query agent events by trace_id.
 	agentFilters := repository.EventFilters{
 		TraceID: &traceID,
 		Limit:   1000,
@@ -75,14 +96,14 @@ func (h *TraceHandler) GetTrace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Query system events by trace_id.
+	// Step 2: Query system events by trace_id.
 	systemEvents, err := h.systemRepo.FindByTraceID(ctx, traceID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to query system events: "+err.Error())
 		return
 	}
 
-	// Merge into unified timeline.
+	// Step 3: Merge into a unified timeline by converting both types to traceSpan.
 	spans := make([]traceSpan, 0, len(agentEvents)+len(systemEvents))
 
 	for _, e := range agentEvents {
@@ -116,7 +137,7 @@ func (h *TraceHandler) GetTrace(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	// Sort by timestamp ascending.
+	// Step 4: Sort by timestamp ascending for chronological order.
 	sort.Slice(spans, func(i, j int) bool {
 		return spans[i].Timestamp.Before(spans[j].Timestamp)
 	})

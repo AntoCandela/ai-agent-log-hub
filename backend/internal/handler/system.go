@@ -13,11 +13,16 @@ import (
 )
 
 // SystemQuerier abstracts the system event query method.
+// System events are distinct from agent events -- they represent
+// infrastructure-level occurrences (e.g. service restarts, DB migrations)
+// rather than individual AI agent actions.
 type SystemQuerier interface {
 	Query(ctx context.Context, filters repository.SystemEventFilters) ([]model.SystemEvent, int, error)
 }
 
 // SystemHandler serves the GET /api/v1/system endpoint.
+// It works very similarly to LogHandler but operates on the system_events
+// table with its own filter struct (SystemEventFilters).
 type SystemHandler struct {
 	systemRepo SystemQuerier
 }
@@ -28,13 +33,27 @@ func NewSystemHandler(systemRepo SystemQuerier) *SystemHandler {
 }
 
 // QuerySystem handles GET /api/v1/system.
+//
+// Supports the following query-string filters:
+//   - severity: filter by severity level (debug, info, warn, error).
+//   - source_service: filter by the service that emitted the event.
+//   - event_name: filter by event name (e.g. "db_migration_complete").
+//   - trace_id: filter by distributed trace ID.
+//   - session_id: filter by associated session (UUID).
+//   - text: free-text search across message and attributes.
+//   - since / until: time range (RFC 3339 format).
+//   - order: "asc" or "desc" (default "desc").
+//   - limit: max rows, default 50, max 1000.
+//   - offset: pagination offset, default 0.
 func (h *SystemHandler) QuerySystem(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
+	// Default ordering is newest-first.
 	filters := repository.SystemEventFilters{
 		Order: "desc",
 	}
 
+	// Parse each optional filter from the query string.
 	if v := q.Get("severity"); v != "" {
 		filters.Severity = &v
 	}
@@ -78,6 +97,7 @@ func (h *SystemHandler) QuerySystem(w http.ResponseWriter, r *http.Request) {
 		filters.Order = v
 	}
 
+	// Parse limit with default 50 and max 1000.
 	limit := 50
 	if v := q.Get("limit"); v != "" {
 		n, err := strconv.Atoi(v)
@@ -90,6 +110,7 @@ func (h *SystemHandler) QuerySystem(w http.ResponseWriter, r *http.Request) {
 	}
 	filters.Limit = limit
 
+	// Parse offset for pagination.
 	if v := q.Get("offset"); v != "" {
 		n, err := strconv.Atoi(v)
 		if err == nil && n >= 0 {
@@ -103,6 +124,7 @@ func (h *SystemHandler) QuerySystem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Guarantee a JSON array, never null.
 	if events == nil {
 		events = []model.SystemEvent{}
 	}
