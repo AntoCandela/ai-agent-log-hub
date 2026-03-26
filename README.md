@@ -1,18 +1,28 @@
 # AI Agent Log Hub
 
-Unified observability platform for AI agent behavior traces and application logs. Capture, correlate, and query tool calls, file modifications, git commits, and system telemetry with end-to-end traceability.
+Unified observability platform for **any AI coding agent** — Claude Code, Cursor, Aider, LangChain agents, or your own custom tools. Capture, correlate, and query tool calls, file modifications, git commits, and system telemetry with end-to-end traceability.
 
-Think "Datadog for AI agents" — where agents can also query their own logs as a knowledge base.
+**Not just another Claude Code extension.** While most AI observability tools lock you into a single agent runtime, Log Hub works with any agent that can make HTTP calls or emit OpenTelemetry traces. Ship events from multiple agents, correlate their actions with your backend telemetry, and build up cross-agent knowledge over time.
 
-## Features
+## Why This Exists
 
-- **Agent event capture** — tool calls, explicit logs, git commits, file changes, errors
-- **OTLP ingestion** — accept OpenTelemetry traces and logs from backend services
-- **Auto-registration** — agents are registered on first event, sessions created automatically
-- **Cross-layer correlation** — link agent actions to system traces via trace IDs
-- **Dual ingestion** — HTTP API for agent events + OTLP for system telemetry
-- **Session lifecycle** — automatic session creation, timeout, and closure
-- **Composable queries** — filter events by agent, session, tool, severity, time range, full-text search
+AI coding agents are powerful but opaque. When an agent modifies your codebase across a 30-minute session, you're left with a git diff and no context. Log Hub gives you:
+
+- **Full session replay** — every tool call, file edit, command, and decision, in order
+- **Cross-layer tracing** — follow an agent's curl command through your backend, into the database, and back
+- **Agent memory** — agents store and recall knowledge across sessions via semantic search
+- **Multi-agent visibility** — see what all your agents did across all your projects, in one place
+
+## Supported Agents
+
+| Agent | Integration | How |
+|-------|-----------|-----|
+| **Claude Code** | Native hooks + MCP | Automatic capture via PostToolUse hook + 15 MCP query tools |
+| **Cursor** | HTTP API | POST events to `/api/v1/events` |
+| **Aider** | HTTP API | POST events to `/api/v1/events` |
+| **LangChain / LangGraph** | HTTP API + OTLP | Event API for agent actions + OTLP for chain traces |
+| **Custom agents** | HTTP API + OTLP | Any agent that can make HTTP calls or emit OpenTelemetry |
+| **Any backend** | OTLP | Standard OpenTelemetry traces and logs |
 
 ## Quick Start
 
@@ -45,69 +55,123 @@ curl -X POST http://localhost:4800/api/v1/events \
   }'
 ```
 
+### Connect Claude Code (MCP)
+
+```jsonc
+// .claude/settings.json or project .mcp.json
+{
+  "mcpServers": {
+    "loghub": {
+      "command": "loghub-mcp",
+      "env": {
+        "LOGHUB_URL": "http://localhost:4800",
+        "LOGHUB_AGENT_ID": "claude-code"
+      }
+    }
+  }
+}
+```
+
 ## Architecture
 
 ```
-┌─────────────┐    ┌──────────────┐    ┌──────────────────┐
-│ Claude Code  │───▶│              │    │                  │
-│ Hooks        │    │   Backend    │───▶│   PostgreSQL 16  │
-│              │    │   (Go/Chi)   │    │   + pgvector     │
-├─────────────┤    │              │    │                  │
-│ OTLP Sources │───▶│  :4800       │    │  9 tables        │
-│ (traces/logs)│    │              │    │  Full-text search │
-├─────────────┤    │              │    │  Vector embeddings│
-│ HTTP API     │───▶│              │    │                  │
-└─────────────┘    └──────────────┘    └──────────────────┘
+┌──────────────┐
+│ Claude Code   │──hook──▶┐
+├──────────────┤         │
+│ Cursor/Aider  │──HTTP──▶│    ┌──────────────┐    ┌──────────────────┐
+├──────────────┤         ├───▶│   Backend    │───▶│   PostgreSQL 16  │
+│ LangChain     │──OTLP──▶│    │   (Go/Chi)   │    │   + pgvector     │
+├──────────────┤         │    │  :4800       │    │                  │
+│ Your backend  │──OTLP──▶│    └──────────────┘    │  9 tables        │
+├──────────────┤         │                         │  Vector search   │
+│ Browser       │──HTTP──▶┘                         │  Full-text index │
+└──────────────┘                                    └──────────────────┘
 ```
 
 ## API Endpoints
 
+### Ingestion
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/healthz` | Health check with DB status |
 | POST | `/api/v1/events` | Ingest agent events (single or batch) |
 | POST | `/v1/traces` | OTLP trace ingestion (JSON) |
 | POST | `/v1/logs` | OTLP log ingestion (JSON) |
+
+### Query
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/healthz` | Health check with DB status |
+| GET | `/api/v1/logs` | Search logs with composable filters |
+| GET | `/api/v1/sessions` | List sessions with filters |
+| GET | `/api/v1/sessions/{id}` | Session detail |
+| GET | `/api/v1/sessions/{id}/files` | Files touched in session |
+| GET | `/api/v1/sessions/{id}/summary` | Auto-generated session summary |
+| GET | `/api/v1/logs/errors` | Error search with surrounding context |
+| GET | `/api/v1/logs/blame` | Which agent last modified a file |
+| GET | `/api/v1/system` | System events (OTLP data) |
+| GET | `/api/v1/traces/{traceID}` | Cross-layer trace waterfall |
+
+### Memory
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/memory` | Store agent memory (key-value + embedding) |
+| POST | `/api/v1/memory/search` | Semantic search over memories |
+| POST | `/api/v1/memory/recall` | Contextual recall (find similar past situations) |
+| GET | `/api/v1/memory` | List stored memories |
+| DELETE | `/api/v1/memory/{key}` | Delete a memory |
+
+### MCP Tools (for Claude Code)
+
+15 tools available when connected via MCP: `log.emit`, `log.query`, `log.session`, `log.sessions`, `log.files`, `log.errors`, `log.summary`, `log.blame`, `log.system`, `log.trace`, `memory.store`, `memory.search`, `memory.recall`, `memory.list`, `memory.delete`
 
 ## Project Structure
 
 ```
 ai-agent-log-hub/
-├── backend/              # Go backend
+├── backend/              # Go backend (API, ingestion, storage)
 │   ├── cmd/loghub/       # Entry point
 │   ├── internal/
 │   │   ├── config/       # Environment configuration
-│   │   ├── handler/      # HTTP handlers
+│   │   ├── handler/      # HTTP handlers (events, logs, sessions, memory, traces)
 │   │   ├── middleware/    # Request ID, logging, CORS, auth, rate limiting
-│   │   ├── model/        # Domain types
-│   │   ├── otlp/         # OpenTelemetry receivers
-│   │   ├── repository/   # Database access layer
-│   │   └── service/      # Business logic
-│   └── migrations/       # SQL schema migrations
+│   │   ├── model/        # Domain types (Agent, Session, Event, Memory, Summary)
+│   │   ├── otlp/         # OpenTelemetry trace and log receivers
+│   │   ├── embed/        # Embedding service client (local + API backends)
+│   │   ├── repository/   # Database access (SQL, pgvector search)
+│   │   └── service/      # Business logic (session lifecycle, summaries)
+│   ├── migrations/       # SQL schema (9 tables, indexes, triggers)
+│   └── tests/            # Unit and integration tests
+├── mcp/                  # MCP server binary (15 tools, stdio transport)
+├── hooks/                # Claude Code hook binary (event capture + sanitization)
 ├── frontend/             # Web UI (coming soon)
-├── mcp/                  # MCP server for agent tools (coming soon)
-└── docker-compose.yml
+└── docker-compose.yml    # Full stack: PostgreSQL + backend + embedding service
 ```
 
 ## Development
 
 ### Prerequisites
 
-- Go 1.25+
+- Go 1.24+
 - Docker & Docker Compose
-- PostgreSQL 16 with pgvector (or use Docker Compose)
 
 ### Run locally
 
 ```bash
-# Start PostgreSQL
-docker compose up db -d
+# Start PostgreSQL and embedding service
+docker compose up db embedding -d
 
 # Build and run the backend
 cd backend
-export DATABASE_URL="postgres://loghub:loghub_dev@localhost:5432/loghub?sslmode=disable"
+cp ../.env.example ../.env  # set POSTGRES_PASSWORD
+export DATABASE_URL="postgres://loghub:yourpassword@localhost:5432/loghub?sslmode=disable"
 go build ./cmd/loghub
 ./loghub
+```
+
+### Run quality checks
+
+```bash
+make ci    # fmt + lint + vet + test + vuln
 ```
 
 ### Run tests
@@ -119,7 +183,7 @@ go test ./... -v
 
 ## Configuration
 
-All configuration is via environment variables. See [`.env.example`](.env.example) for the full list with defaults.
+All configuration via environment variables. See [`.env.example`](.env.example) for the full list.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -129,12 +193,19 @@ All configuration is via environment variables. See [`.env.example`](.env.exampl
 | `AUTH_ENABLED` | `false` | Enable API key authentication |
 | `AGENT_SESSION_TIMEOUT` | `30m` | Session inactivity timeout |
 | `RETENTION_DAYS` | `90` | Days to retain event data |
+| `EMBEDDING_BACKEND` | `local` | Embedding backend (`local` or `api`) |
 
 ## Roadmap
 
-- **MS-1 Foundation** — Log capture, event ingestion, sessions, OTLP (done)
-- **MS-2 Agent Query & MCP** — MCP tools for agents to query their own history and store memories
-- **MS-3 Observability UI** — Web dashboard with live tail, session explorer, log search
+- [x] **MS-1 Foundation** — Event ingestion, sessions, OTLP, PostgreSQL schema
+- [x] **MS-2 Agent Query & MCP** — REST query endpoints, MCP server, Claude Code hook, memory system
+- [x] **MS-4 CI/CD** — GitHub Actions, linting, branch protection
+- [ ] **MS-3 Observability UI** — Web dashboard, live tail, session explorer, log search
+- [ ] **MS-5 Knowledge Graph** — TypeDB integration for causal reasoning and cross-agent learning
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, code style, and PR process.
 
 ## License
 
