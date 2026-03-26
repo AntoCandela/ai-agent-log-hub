@@ -1,4 +1,4 @@
-package handler
+package handler_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/handler"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/repository"
 	"github.com/go-chi/chi/v5"
@@ -97,7 +98,7 @@ func TestGetTrace_MergesEvents(t *testing.T) {
 		},
 	}
 
-	h := NewTraceHandler(agentMock, systemMock)
+	h := handler.NewTraceHandler(agentMock, systemMock)
 
 	req := traceRequest(traceID)
 	rr := httptest.NewRecorder()
@@ -140,7 +141,7 @@ func TestGetTrace_EmptyTrace(t *testing.T) {
 	agentMock := &mockTraceQuerier{events: []model.AgentEvent{}, total: 0}
 	systemMock := &mockSystemTraceQuerier{events: []model.SystemEvent{}}
 
-	h := NewTraceHandler(agentMock, systemMock)
+	h := handler.NewTraceHandler(agentMock, systemMock)
 	req := traceRequest("trace-empty")
 	rr := httptest.NewRecorder()
 	h.GetTrace(rr, req)
@@ -162,7 +163,7 @@ func TestGetTrace_MissingTraceID(t *testing.T) {
 	agentMock := &mockTraceQuerier{}
 	systemMock := &mockSystemTraceQuerier{}
 
-	h := NewTraceHandler(agentMock, systemMock)
+	h := handler.NewTraceHandler(agentMock, systemMock)
 
 	// Request without chi route context (empty traceID).
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/traces/", nil)

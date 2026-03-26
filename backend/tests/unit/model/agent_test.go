@@ -1,8 +1,10 @@
-package model
+package model_test
 
 import (
 	"strings"
 	"testing"
+
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
 )
 
 func TestValidateAgentID(t *testing.T) {
@@ -20,7 +22,7 @@ func TestValidateAgentID(t *testing.T) {
 			"mix-ED_123",
 		}
 		for _, id := range valid {
-			if err := ValidateAgentID(id); err != nil {
+			if err := model.ValidateAgentID(id); err != nil {
 				t.Errorf("expected valid agent ID %q to pass, got error: %v", id, err)
 			}
 		}
@@ -38,7 +40,7 @@ func TestValidateAgentID(t *testing.T) {
 			"has!bang",
 		}
 		for _, id := range invalid {
-			if err := ValidateAgentID(id); err == nil {
+			if err := model.ValidateAgentID(id); err == nil {
 				t.Errorf("expected invalid agent ID %q to fail, but got no error", id)
 			}
 		}

@@ -1,14 +1,16 @@
-package middleware
+package middleware_test
 
 import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/middleware"
 )
 
 func TestRateLimit_SkipsWhenDisabled(t *testing.T) {
-	handler := RateLimit(RateLimitConfig{Enabled: false})(
+	handler := middleware.RateLimit(middleware.RateLimitConfig{Enabled: false})(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
 	)
 
@@ -22,7 +24,7 @@ func TestRateLimit_SkipsWhenDisabled(t *testing.T) {
 }
 
 func TestRateLimit_AllowsWithinLimit(t *testing.T) {
-	handler := RateLimit(RateLimitConfig{Enabled: true, RatePerSec: 10, Burst: 10})(
+	handler := middleware.RateLimit(middleware.RateLimitConfig{Enabled: true, RatePerSec: 10, Burst: 10})(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
 	)
 
@@ -37,7 +39,7 @@ func TestRateLimit_AllowsWithinLimit(t *testing.T) {
 }
 
 func TestRateLimit_BlocksExcess(t *testing.T) {
-	handler := RateLimit(RateLimitConfig{Enabled: true, RatePerSec: 1, Burst: 1})(
+	handler := middleware.RateLimit(middleware.RateLimitConfig{Enabled: true, RatePerSec: 1, Burst: 1})(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
 	)
 

@@ -1,9 +1,11 @@
-package config
+package config_test
 
 import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/config"
 )
 
 func clearEnv() {
@@ -23,7 +25,7 @@ func TestLoad_Defaults(t *testing.T) {
 	os.Setenv("DATABASE_URL", "postgres://test:test@localhost/test")
 	defer clearEnv()
 
-	cfg, err := Load()
+	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -80,7 +82,7 @@ func TestLoad_Overrides(t *testing.T) {
 	os.Setenv("FRONTEND_URL", "https://ui.example.com")
 	defer clearEnv()
 
-	cfg, err := Load()
+	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -123,7 +125,7 @@ func TestLoad_TLSRequiresPaths(t *testing.T) {
 	os.Setenv("TLS_ENABLED", "true")
 	defer clearEnv()
 
-	_, err := Load()
+	_, err := config.Load()
 	if err == nil {
 		t.Fatal("expected error when TLS_ENABLED=true but cert/key paths are empty")
 	}
@@ -133,7 +135,7 @@ func TestLoad_MissingDatabaseURL(t *testing.T) {
 	clearEnv()
 	defer clearEnv()
 
-	_, err := Load()
+	_, err := config.Load()
 	if err == nil {
 		t.Fatal("expected error for missing DATABASE_URL, got nil")
 	}
@@ -145,7 +147,7 @@ func TestLoad_EmbeddingAPIRequiresURL(t *testing.T) {
 	os.Setenv("EMBEDDING_BACKEND", "api")
 	defer clearEnv()
 
-	_, err := Load()
+	_, err := config.Load()
 	if err == nil {
 		t.Fatal("expected error when EMBEDDING_BACKEND=api but EMBEDDING_API_URL is empty")
 	}
@@ -157,7 +159,7 @@ func TestLoad_InvalidPort(t *testing.T) {
 	os.Setenv("API_PORT", "notanumber")
 	defer clearEnv()
 
-	_, err := Load()
+	_, err := config.Load()
 	if err == nil {
 		t.Fatal("expected error for invalid API_PORT")
 	}
@@ -168,7 +170,7 @@ func TestDescribe_ReturnsAllEntries(t *testing.T) {
 	os.Setenv("DATABASE_URL", "postgres://test:secret@localhost/test")
 	defer clearEnv()
 
-	cfg, err := Load()
+	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

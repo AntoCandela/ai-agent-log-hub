@@ -1,14 +1,16 @@
-package middleware
+package middleware_test
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/middleware"
 )
 
 func TestRequestID_GeneratesWhenMissing(t *testing.T) {
-	handler := RequestID(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id := GetRequestID(r.Context())
+	handler := middleware.RequestID(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := middleware.GetRequestID(r.Context())
 		if id == "" {
 			t.Error("expected request ID in context")
 		}
@@ -24,8 +26,8 @@ func TestRequestID_GeneratesWhenMissing(t *testing.T) {
 }
 
 func TestRequestID_PreservesExisting(t *testing.T) {
-	handler := RequestID(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id := GetRequestID(r.Context())
+	handler := middleware.RequestID(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := middleware.GetRequestID(r.Context())
 		if id != "existing-id" {
 			t.Errorf("expected existing-id, got %q", id)
 		}

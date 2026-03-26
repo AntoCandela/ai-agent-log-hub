@@ -1,13 +1,15 @@
-package service
+package service_test
 
 import (
 	"context"
 	"testing"
+
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/service"
 )
 
 func TestAgentService_EnsureExists_InvalidID(t *testing.T) {
 	// nil repo is intentional: validation must fail before any DB call is made.
-	svc := NewAgentService(nil)
+	svc := service.NewAgentService(nil)
 
 	invalid := []string{
 		"",
@@ -36,7 +38,7 @@ func TestAgentService_EnsureExists_ValidID_CallsRepo(t *testing.T) {
 		},
 	}
 
-	svc := NewAgentService(repo)
+	svc := service.NewAgentService(repo)
 	if err := svc.EnsureExists(context.Background(), "claude-agent"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

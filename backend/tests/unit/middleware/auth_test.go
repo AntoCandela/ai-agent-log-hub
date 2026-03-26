@@ -1,15 +1,17 @@
-package middleware
+package middleware_test
 
 import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/middleware"
 )
 
 func TestAuth_SkipsWhenDisabled(t *testing.T) {
 	called := false
-	handler := Auth(AuthConfig{Enabled: false})(
+	handler := middleware.Auth(middleware.AuthConfig{Enabled: false})(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			called = true
 		}),
@@ -25,7 +27,7 @@ func TestAuth_SkipsWhenDisabled(t *testing.T) {
 }
 
 func TestAuth_RejectsMissingHeader(t *testing.T) {
-	handler := Auth(AuthConfig{Enabled: true})(
+	handler := middleware.Auth(middleware.AuthConfig{Enabled: true})(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
 	)
 
@@ -46,7 +48,7 @@ func TestAuth_RejectsMissingHeader(t *testing.T) {
 }
 
 func TestAuth_RejectsInvalidFormat(t *testing.T) {
-	handler := Auth(AuthConfig{Enabled: true})(
+	handler := middleware.Auth(middleware.AuthConfig{Enabled: true})(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
 	)
 
@@ -62,7 +64,7 @@ func TestAuth_RejectsInvalidFormat(t *testing.T) {
 
 func TestAuth_AcceptsValidKey(t *testing.T) {
 	called := false
-	handler := Auth(AuthConfig{Enabled: true})(
+	handler := middleware.Auth(middleware.AuthConfig{Enabled: true})(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			called = true
 		}),

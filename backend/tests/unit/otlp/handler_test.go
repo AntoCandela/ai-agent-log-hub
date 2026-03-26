@@ -1,4 +1,4 @@
-package otlp
+package otlp_test
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/otlp"
 )
 
 // mockInserter records calls to InsertBatch for assertions.
@@ -26,7 +27,7 @@ func (m *mockInserter) InsertBatch(_ context.Context, events []model.SystemEvent
 
 func TestTracesHandler_ValidPayload(t *testing.T) {
 	mock := &mockInserter{}
-	h := NewOTLPHandler(mock)
+	h := otlp.NewOTLPHandler(mock)
 
 	payload := `{
 		"resourceSpans": [{
@@ -89,7 +90,7 @@ func TestTracesHandler_ValidPayload(t *testing.T) {
 
 func TestTracesHandler_ErrorStatus(t *testing.T) {
 	mock := &mockInserter{}
-	h := NewOTLPHandler(mock)
+	h := otlp.NewOTLPHandler(mock)
 
 	payload := `{
 		"resourceSpans": [{
@@ -130,7 +131,7 @@ func TestTracesHandler_ErrorStatus(t *testing.T) {
 
 func TestLogsHandler_ValidPayload(t *testing.T) {
 	mock := &mockInserter{}
-	h := NewOTLPHandler(mock)
+	h := otlp.NewOTLPHandler(mock)
 
 	payload := `{
 		"resourceLogs": [{
@@ -196,7 +197,7 @@ func TestLogsHandler_SeverityMapping(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := logSeverityNumberToString(tt.severityNumber)
+		got := otlp.LogSeverityNumberToString(tt.severityNumber)
 		if got != tt.expected {
 			t.Errorf("severityNumber %d: expected %s, got %s", tt.severityNumber, tt.expected, got)
 		}
@@ -205,7 +206,7 @@ func TestLogsHandler_SeverityMapping(t *testing.T) {
 
 func TestTracesHandler_EmptyBody(t *testing.T) {
 	mock := &mockInserter{}
-	h := NewOTLPHandler(mock)
+	h := otlp.NewOTLPHandler(mock)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/traces", bytes.NewBufferString(""))
 	w := httptest.NewRecorder()
@@ -221,7 +222,7 @@ func TestTracesHandler_EmptyBody(t *testing.T) {
 
 func TestLogsHandler_EmptyBody(t *testing.T) {
 	mock := &mockInserter{}
-	h := NewOTLPHandler(mock)
+	h := otlp.NewOTLPHandler(mock)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/logs", bytes.NewBufferString(""))
 	w := httptest.NewRecorder()
@@ -237,7 +238,7 @@ func TestLogsHandler_EmptyBody(t *testing.T) {
 
 func TestTracesHandler_InvalidJSON(t *testing.T) {
 	mock := &mockInserter{}
-	h := NewOTLPHandler(mock)
+	h := otlp.NewOTLPHandler(mock)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/traces", bytes.NewBufferString("{not json"))
 	w := httptest.NewRecorder()
@@ -250,7 +251,7 @@ func TestTracesHandler_InvalidJSON(t *testing.T) {
 
 func TestLogsHandler_InvalidJSON(t *testing.T) {
 	mock := &mockInserter{}
-	h := NewOTLPHandler(mock)
+	h := otlp.NewOTLPHandler(mock)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/logs", bytes.NewBufferString("{not json"))
 	w := httptest.NewRecorder()
@@ -263,7 +264,7 @@ func TestLogsHandler_InvalidJSON(t *testing.T) {
 
 func TestTracesHandler_EmptyResourceSpans(t *testing.T) {
 	mock := &mockInserter{}
-	h := NewOTLPHandler(mock)
+	h := otlp.NewOTLPHandler(mock)
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/traces", bytes.NewBufferString(`{"resourceSpans":[]}`))
 	w := httptest.NewRecorder()

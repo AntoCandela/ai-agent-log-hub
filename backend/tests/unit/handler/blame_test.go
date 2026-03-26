@@ -1,4 +1,4 @@
-package handler
+package handler_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/handler"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/repository"
 	"github.com/google/uuid"
@@ -33,7 +34,7 @@ func (m *mockBlameQuerier) Query(_ context.Context, filters repository.EventFilt
 // ── tests ──
 
 func TestGetBlame_MissingFile(t *testing.T) {
-	h := NewBlameHandler(&mockBlameQuerier{})
+	h := handler.NewBlameHandler(&mockBlameQuerier{})
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs/blame", nil)
 	rr := httptest.NewRecorder()
 	h.GetBlame(rr, req)
@@ -74,7 +75,7 @@ func TestGetBlame_ReturnsModifications(t *testing.T) {
 		total: 2,
 	}
 
-	h := NewBlameHandler(mock)
+	h := handler.NewBlameHandler(mock)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs/blame?file=src/main.go", nil)
 	rr := httptest.NewRecorder()
 	h.GetBlame(rr, req)
@@ -122,7 +123,7 @@ func TestGetBlame_CustomDepth(t *testing.T) {
 		total:  0,
 	}
 
-	h := NewBlameHandler(mock)
+	h := handler.NewBlameHandler(mock)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs/blame?file=src/main.go&depth=3", nil)
 	rr := httptest.NewRecorder()
 	h.GetBlame(rr, req)

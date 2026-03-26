@@ -1,14 +1,16 @@
-package middleware
+package middleware_test
 
 import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/middleware"
 )
 
 func TestRecover_CatchesPanic(t *testing.T) {
-	handler := Recover(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := middleware.Recover(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		panic("test panic")
 	}))
 
@@ -29,7 +31,7 @@ func TestRecover_CatchesPanic(t *testing.T) {
 }
 
 func TestRecover_PassesThrough(t *testing.T) {
-	handler := Recover(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := middleware.Recover(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
 

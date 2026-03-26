@@ -1,4 +1,4 @@
-package handler
+package handler_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/handler"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -109,7 +110,7 @@ func (m *mockMemoryEmbedder) Embed(_ context.Context, _ string) ([]float32, erro
 type mockEmbeddingStorer struct {
 	stored  int
 	deleted int
-	results []EmbeddingSearchResult
+	results []handler.EmbeddingSearchResult
 	err     error
 }
 
@@ -129,7 +130,7 @@ func (m *mockEmbeddingStorer) DeleteBySource(_ context.Context, _ string, _ uuid
 	return nil
 }
 
-func (m *mockEmbeddingStorer) Search(_ context.Context, _ []float32, _ string, _ []string, _ int, _ float64) ([]EmbeddingSearchResult, error) {
+func (m *mockEmbeddingStorer) Search(_ context.Context, _ []float32, _ string, _ []string, _ int, _ float64) ([]handler.EmbeddingSearchResult, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -142,7 +143,7 @@ func TestStoreMemory(t *testing.T) {
 	store := newMockMemoryStorer()
 	embedder := &mockMemoryEmbedder{vec: []float32{0.1, 0.2, 0.3}}
 	embStore := &mockEmbeddingStorer{}
-	h := NewMemoryHandler(store, embedder, embStore)
+	h := handler.NewMemoryHandler(store, embedder, embStore)
 
 	body := `{"agent_id":"agent-1","key":"user_pref","value":"dark mode","tags":["ui","pref"],"shared":false}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/memory", strings.NewReader(body))
@@ -171,7 +172,7 @@ func TestStoreMemory(t *testing.T) {
 }
 
 func TestStoreMemory_MissingAgentID(t *testing.T) {
-	h := NewMemoryHandler(newMockMemoryStorer(), nil, nil)
+	h := handler.NewMemoryHandler(newMockMemoryStorer(), nil, nil)
 
 	body := `{"key":"k","value":"v"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/memory", strings.NewReader(body))
@@ -185,7 +186,7 @@ func TestStoreMemory_MissingAgentID(t *testing.T) {
 }
 
 func TestStoreMemory_MissingKey(t *testing.T) {
-	h := NewMemoryHandler(newMockMemoryStorer(), nil, nil)
+	h := handler.NewMemoryHandler(newMockMemoryStorer(), nil, nil)
 
 	body := `{"agent_id":"a","value":"v"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/memory", strings.NewReader(body))
@@ -201,12 +202,12 @@ func TestStoreMemory_MissingKey(t *testing.T) {
 func TestSearchMemory(t *testing.T) {
 	store := newMockMemoryStorer()
 	embedder := &mockMemoryEmbedder{vec: []float32{0.1, 0.2}}
-	results := []EmbeddingSearchResult{
+	results := []handler.EmbeddingSearchResult{
 		{SourceType: "memory", SourceID: uuid.New(), AgentID: "agent-1", Content: "found it", Similarity: 0.95},
 		{SourceType: "memory", SourceID: uuid.New(), AgentID: "agent-1", Content: "also this", Similarity: 0.80},
 	}
 	embStore := &mockEmbeddingStorer{results: results}
-	h := NewMemoryHandler(store, embedder, embStore)
+	h := handler.NewMemoryHandler(store, embedder, embStore)
 
 	body := `{"query":"dark mode","agent_id":"agent-1","top_k":5}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/memory/search", strings.NewReader(body))
@@ -230,7 +231,7 @@ func TestSearchMemory(t *testing.T) {
 }
 
 func TestSearchMemory_MissingAgentID(t *testing.T) {
-	h := NewMemoryHandler(newMockMemoryStorer(), &mockMemoryEmbedder{}, &mockEmbeddingStorer{})
+	h := handler.NewMemoryHandler(newMockMemoryStorer(), &mockMemoryEmbedder{}, &mockEmbeddingStorer{})
 
 	body := `{"query":"something"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/memory/search", strings.NewReader(body))
@@ -254,7 +255,7 @@ func TestListMemories(t *testing.T) {
 		MemoryID: uuid.New(), AgentID: "agent-1", Key: "k2", Value: "v2",
 		Tags: []string{"tag2"}, CreatedAt: time.Now(), UpdatedAt: time.Now(),
 	}
-	h := NewMemoryHandler(store, nil, nil)
+	h := handler.NewMemoryHandler(store, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/memory?agent_id=agent-1&limit=10", nil)
 	w := httptest.NewRecorder()
@@ -280,7 +281,7 @@ func TestListMemories(t *testing.T) {
 }
 
 func TestListMemories_MissingAgentID(t *testing.T) {
-	h := NewMemoryHandler(newMockMemoryStorer(), nil, nil)
+	h := handler.NewMemoryHandler(newMockMemoryStorer(), nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/memory", nil)
 	w := httptest.NewRecorder()
@@ -299,7 +300,7 @@ func TestDeleteMemory(t *testing.T) {
 		MemoryID: memID, AgentID: "agent-1", Key: "mykey", Value: "val",
 	}
 	embStore := &mockEmbeddingStorer{}
-	h := NewMemoryHandler(store, nil, embStore)
+	h := handler.NewMemoryHandler(store, nil, embStore)
 
 	// Use chi router to extract URL param.
 	r := chi.NewRouter()
@@ -325,7 +326,7 @@ func TestDeleteMemory(t *testing.T) {
 }
 
 func TestDeleteMemory_MissingAgentID(t *testing.T) {
-	h := NewMemoryHandler(newMockMemoryStorer(), nil, nil)
+	h := handler.NewMemoryHandler(newMockMemoryStorer(), nil, nil)
 
 	r := chi.NewRouter()
 	r.Delete("/api/v1/memory/{key}", h.DeleteMemory)

@@ -1,4 +1,4 @@
-package handler
+package handler_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/handler"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/repository"
 	"github.com/google/uuid"
@@ -37,7 +38,7 @@ func TestQuerySystem_DefaultParams(t *testing.T) {
 		events: []model.SystemEvent{},
 		total:  0,
 	}
-	h := NewSystemHandler(mock)
+	h := handler.NewSystemHandler(mock)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/system", nil)
 	rr := httptest.NewRecorder()
@@ -71,7 +72,7 @@ func TestQuerySystem_WithFilters(t *testing.T) {
 		},
 		total: 1,
 	}
-	h := NewSystemHandler(mock)
+	h := handler.NewSystemHandler(mock)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/system?severity=info&source_service=postgres&event_name=db.query&order=asc&limit=10", nil)
 	rr := httptest.NewRecorder()
@@ -111,7 +112,7 @@ func TestQuerySystem_WithFilters(t *testing.T) {
 
 func TestQuerySystem_InvalidSessionID(t *testing.T) {
 	mock := &mockSystemQuerier{}
-	h := NewSystemHandler(mock)
+	h := handler.NewSystemHandler(mock)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/system?session_id=not-a-uuid", nil)
 	rr := httptest.NewRecorder()
@@ -129,7 +130,7 @@ func TestQuerySystem_HasMore(t *testing.T) {
 		},
 		total: 10,
 	}
-	h := NewSystemHandler(mock)
+	h := handler.NewSystemHandler(mock)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/system?limit=1", nil)
 	rr := httptest.NewRecorder()

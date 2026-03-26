@@ -1,4 +1,4 @@
-package service
+package service_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/repository"
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/service"
 	"github.com/google/uuid"
 )
 
@@ -70,6 +71,34 @@ func (m *mockEmbedder) EmbedBatch(_ context.Context, texts []string) ([][]float3
 }
 
 func (m *mockEmbedder) Dimensions() int { return len(m.vec) }
+
+// ── local types mirroring unexported structs for JSON unmarshaling ──
+
+type fileInfo struct {
+	FilePath string `json:"file_path"`
+	Changes  int    `json:"changes"`
+}
+
+type toolInfo struct {
+	ToolName string `json:"tool_name"`
+	Count    int    `json:"count"`
+}
+
+type commitInfo struct {
+	Hash    string `json:"hash"`
+	Message string `json:"message"`
+}
+
+type errorInfo struct {
+	Message   string `json:"message"`
+	EventType string `json:"event_type"`
+}
+
+type timelineEntry struct {
+	EventType string `json:"event_type"`
+	Timestamp string `json:"timestamp"`
+	Detail    string `json:"detail,omitempty"`
+}
 
 // ── helpers ──
 
@@ -163,7 +192,7 @@ func TestGenerateForSession_Aggregation(t *testing.T) {
 	embedStore := &mockEmbeddingStore{}
 	embedder := &mockEmbedder{vec: []float32{0.1, 0.2, 0.3}}
 
-	svc := NewSummaryService(summaryStore, eventRepo, embedStore, embedder)
+	svc := service.NewSummaryService(summaryStore, eventRepo, embedStore, embedder)
 	err := svc.GenerateForSession(context.Background(), session)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -294,7 +323,7 @@ func TestGenerateForSession_NoEvents(t *testing.T) {
 	eventRepo := &mockSummaryEventRepo{events: nil, total: 0}
 	summaryStore := &mockSummaryStore{}
 
-	svc := NewSummaryService(summaryStore, eventRepo, nil, nil)
+	svc := service.NewSummaryService(summaryStore, eventRepo, nil, nil)
 	err := svc.GenerateForSession(context.Background(), session)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -326,7 +355,7 @@ func TestGenerateForSession_NilEmbedder(t *testing.T) {
 	embedStore := &mockEmbeddingStore{}
 
 	// embedder is nil — should not try to embed.
-	svc := NewSummaryService(summaryStore, eventRepo, embedStore, nil)
+	svc := service.NewSummaryService(summaryStore, eventRepo, embedStore, nil)
 	err := svc.GenerateForSession(context.Background(), session)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

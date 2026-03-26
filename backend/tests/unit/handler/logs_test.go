@@ -1,4 +1,4 @@
-package handler
+package handler_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/handler"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/repository"
 	"github.com/google/uuid"
@@ -15,11 +16,11 @@ import (
 // ── mock LogQuerier ──
 
 type mockLogQuerier struct {
-	events       []model.AgentEvent
-	total        int
-	err          error
-	lastFilters  repository.EventFilters
-	queryCalled  bool
+	events      []model.AgentEvent
+	total       int
+	err         error
+	lastFilters repository.EventFilters
+	queryCalled bool
 }
 
 func (m *mockLogQuerier) Query(_ context.Context, filters repository.EventFilters) ([]model.AgentEvent, int, error) {
@@ -30,10 +31,10 @@ func (m *mockLogQuerier) Query(_ context.Context, filters repository.EventFilter
 
 // ── helpers ──
 
-func doGet(handler http.HandlerFunc, url string) *httptest.ResponseRecorder {
+func doGet(handlerFn http.HandlerFunc, url string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, url, nil)
 	rr := httptest.NewRecorder()
-	handler(rr, req)
+	handlerFn(rr, req)
 	return rr
 }
 
@@ -56,7 +57,7 @@ func TestQueryLogs_NoFilters(t *testing.T) {
 		},
 		total: 2,
 	}
-	h := NewLogHandler(mock)
+	h := handler.NewLogHandler(mock)
 	rr := doGet(h.QueryLogs, "/api/v1/logs")
 
 	if rr.Code != http.StatusOK {
@@ -86,7 +87,7 @@ func TestQueryLogs_WithFilters(t *testing.T) {
 		events: []model.AgentEvent{},
 		total:  0,
 	}
-	h := NewLogHandler(mock)
+	h := handler.NewLogHandler(mock)
 
 	sid := uuid.New()
 	url := "/api/v1/logs?session_id=" + sid.String() +
@@ -137,7 +138,7 @@ func TestQueryLogs_WithFilters(t *testing.T) {
 
 func TestQueryLogs_InvalidLimit(t *testing.T) {
 	mock := &mockLogQuerier{events: []model.AgentEvent{}, total: 0}
-	h := NewLogHandler(mock)
+	h := handler.NewLogHandler(mock)
 
 	rr := doGet(h.QueryLogs, "/api/v1/logs?limit=notanumber")
 
@@ -151,7 +152,7 @@ func TestQueryLogs_InvalidLimit(t *testing.T) {
 
 func TestQueryLogs_LimitCapped(t *testing.T) {
 	mock := &mockLogQuerier{events: []model.AgentEvent{}, total: 0}
-	h := NewLogHandler(mock)
+	h := handler.NewLogHandler(mock)
 
 	rr := doGet(h.QueryLogs, "/api/v1/logs?limit=5000")
 
@@ -168,7 +169,7 @@ func TestQueryLogs_HasMore(t *testing.T) {
 		events: []model.AgentEvent{{EventID: uuid.New()}},
 		total:  100,
 	}
-	h := NewLogHandler(mock)
+	h := handler.NewLogHandler(mock)
 
 	rr := doGet(h.QueryLogs, "/api/v1/logs?limit=1")
 
@@ -180,7 +181,7 @@ func TestQueryLogs_HasMore(t *testing.T) {
 
 func TestQueryLogs_InvalidSessionID(t *testing.T) {
 	mock := &mockLogQuerier{}
-	h := NewLogHandler(mock)
+	h := handler.NewLogHandler(mock)
 
 	rr := doGet(h.QueryLogs, "/api/v1/logs?session_id=not-a-uuid")
 

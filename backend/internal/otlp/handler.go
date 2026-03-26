@@ -216,7 +216,7 @@ func (h *OTLPHandler) LogsHandler(w http.ResponseWriter, r *http.Request) {
 				traceID := normalizeHexID(rec.TraceID)
 				spanID := normalizeHexID(rec.SpanID)
 
-				severity := logSeverityNumberToString(rec.SeverityNumber)
+				severity := LogSeverityNumberToString(rec.SeverityNumber)
 				timestamp := nanoToTime(rec.TimeUnixNano)
 				attrsJSON := kvToJSON(rec.Attributes)
 				message := anyValueToString(&rec.Body)
@@ -274,7 +274,8 @@ func spanStatusToSeverity(code int) string {
 	}
 }
 
-func logSeverityNumberToString(n int) string {
+// LogSeverityNumberToString maps OTLP severity numbers to string levels.
+func LogSeverityNumberToString(n int) string {
 	switch {
 	case n >= 17:
 		return "fatal"

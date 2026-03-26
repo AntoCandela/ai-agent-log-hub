@@ -1,4 +1,4 @@
-package handler
+package handler_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/handler"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
 	"github.com/google/uuid"
 )
@@ -70,15 +71,15 @@ func (m *mockEventInserter) InsertBatch(_ context.Context, events []model.AgentE
 
 // ── helpers ──
 
-func newHandler() (*EventHandler, *mockAgentEnsurer, *mockSessionResolver, *mockEventInserter) {
+func newHandler() (*handler.EventHandler, *mockAgentEnsurer, *mockSessionResolver, *mockEventInserter) {
 	agents := &mockAgentEnsurer{}
 	sessions := &mockSessionResolver{}
 	events := &mockEventInserter{}
-	h := NewEventHandler(agents, sessions, events)
+	h := handler.NewEventHandler(agents, sessions, events)
 	return h, agents, sessions, events
 }
 
-func doPost(h *EventHandler, body string) *httptest.ResponseRecorder {
+func doPost(h *handler.EventHandler, body string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/events", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()

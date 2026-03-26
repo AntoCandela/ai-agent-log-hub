@@ -1,13 +1,15 @@
-package middleware
+package middleware_test
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/middleware"
 )
 
 func TestCORS_SetsHeaders(t *testing.T) {
-	handler := CORS(CORSConfig{AllowOrigin: "http://localhost:4801", AllowCredentials: true})(
+	handler := middleware.CORS(middleware.CORSConfig{AllowOrigin: "http://localhost:4801", AllowCredentials: true})(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
 	)
 
@@ -24,7 +26,7 @@ func TestCORS_SetsHeaders(t *testing.T) {
 }
 
 func TestCORS_OptionsReturns204(t *testing.T) {
-	handler := CORS(CORSConfig{})(
+	handler := middleware.CORS(middleware.CORSConfig{})(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			t.Error("next handler should not be called for OPTIONS")
 		}),
@@ -40,7 +42,7 @@ func TestCORS_OptionsReturns204(t *testing.T) {
 }
 
 func TestCORS_DefaultsToWildcard(t *testing.T) {
-	handler := CORS(CORSConfig{})(
+	handler := middleware.CORS(middleware.CORSConfig{})(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
 	)
 

@@ -1,4 +1,4 @@
-package handler
+package handler_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/handler"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/repository"
 	"github.com/go-chi/chi/v5"
@@ -77,7 +78,7 @@ func TestListSessions(t *testing.T) {
 		sessions: []*model.Session{s1, s2},
 		total:    2,
 	}
-	h := NewSessionHandler(mock, &mockLogQuerier{})
+	h := handler.NewSessionHandler(mock, &mockLogQuerier{})
 
 	rr := doGet(h.ListSessions, "/api/v1/sessions")
 
@@ -101,7 +102,7 @@ func TestListSessions_WithFilters(t *testing.T) {
 		sessions: []*model.Session{},
 		total:    0,
 	}
-	h := NewSessionHandler(mock, &mockLogQuerier{})
+	h := handler.NewSessionHandler(mock, &mockLogQuerier{})
 
 	rr := doGet(h.ListSessions, "/api/v1/sessions?agent_id=my-agent&status=active&pinned=true&limit=10&offset=5")
 
@@ -129,7 +130,7 @@ func TestListSessions_WithFilters(t *testing.T) {
 func TestGetSession(t *testing.T) {
 	sess := newTestSession()
 	mock := &mockSessionLister{session: sess}
-	h := NewSessionHandler(mock, &mockLogQuerier{})
+	h := handler.NewSessionHandler(mock, &mockLogQuerier{})
 
 	rr := doGetWithChi(
 		"/api/v1/sessions/{sessionID}",
@@ -151,7 +152,7 @@ func TestGetSession(t *testing.T) {
 
 func TestGetSession_BadUUID(t *testing.T) {
 	mock := &mockSessionLister{}
-	h := NewSessionHandler(mock, &mockLogQuerier{})
+	h := handler.NewSessionHandler(mock, &mockLogQuerier{})
 
 	rr := doGetWithChi(
 		"/api/v1/sessions/{sessionID}",
@@ -166,7 +167,7 @@ func TestGetSession_BadUUID(t *testing.T) {
 
 func TestGetSession_NotFound(t *testing.T) {
 	mock := &mockSessionLister{session: nil}
-	h := NewSessionHandler(mock, &mockLogQuerier{})
+	h := handler.NewSessionHandler(mock, &mockLogQuerier{})
 
 	rr := doGetWithChi(
 		"/api/v1/sessions/{sessionID}",
@@ -182,7 +183,7 @@ func TestGetSession_NotFound(t *testing.T) {
 func TestGetSessionSummary(t *testing.T) {
 	sess := newTestSession()
 	mock := &mockSessionLister{session: sess}
-	h := NewSessionHandler(mock, &mockLogQuerier{})
+	h := handler.NewSessionHandler(mock, &mockLogQuerier{})
 
 	rr := doGetWithChi(
 		"/api/v1/sessions/{sessionID}/summary",
@@ -225,7 +226,7 @@ func TestGetSessionFiles(t *testing.T) {
 		},
 		total: 3,
 	}
-	h := NewSessionHandler(sessionMock, eventMock)
+	h := handler.NewSessionHandler(sessionMock, eventMock)
 
 	rr := doGetWithChi(
 		"/api/v1/sessions/{sessionID}/files",

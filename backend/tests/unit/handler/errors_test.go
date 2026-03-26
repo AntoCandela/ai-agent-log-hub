@@ -1,4 +1,4 @@
-package handler
+package handler_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/handler"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/model"
 	"github.com/AntoCandela/ai-agent-log-hub/backend/internal/repository"
 	"github.com/google/uuid"
@@ -33,7 +34,7 @@ func (m *mockErrorSearcher) Query(_ context.Context, filters repository.EventFil
 // ── tests ──
 
 func TestSearchErrors_MissingPattern(t *testing.T) {
-	h := NewErrorHandler(&mockErrorSearcher{})
+	h := handler.NewErrorHandler(&mockErrorSearcher{})
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs/errors", nil)
 	rr := httptest.NewRecorder()
 	h.SearchErrors(rr, req)
@@ -67,21 +68,14 @@ func TestSearchErrors_ReturnsResults(t *testing.T) {
 	}
 
 	callCount := 0
-	mock := &mockErrorSearcher{}
-	// Override Query to return different results on each call.
-	h := NewErrorHandler(mock)
-
-	// First call returns error events, second returns context.
-	mock.events = []model.AgentEvent{errorEvent}
-	mock.total = 1
 
 	// We need a smarter mock that returns different results based on filter.
 	smartMock := &smartErrorMock{
-		errorEvents:  []model.AgentEvent{errorEvent},
-		contextEvts:  contextEvents,
-		callCount:    &callCount,
+		errorEvents: []model.AgentEvent{errorEvent},
+		contextEvts: contextEvents,
+		callCount:   &callCount,
 	}
-	h = NewErrorHandler(smartMock)
+	h := handler.NewErrorHandler(smartMock)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs/errors?pattern=crash", nil)
 	rr := httptest.NewRecorder()
@@ -132,7 +126,7 @@ func TestSearchErrors_WithAgentFilter(t *testing.T) {
 		events: []model.AgentEvent{},
 		total:  0,
 	}
-	h := NewErrorHandler(mock)
+	h := handler.NewErrorHandler(mock)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs/errors?pattern=timeout&agent_id=agent-x", nil)
 	rr := httptest.NewRecorder()
