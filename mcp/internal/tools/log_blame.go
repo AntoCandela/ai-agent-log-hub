@@ -10,6 +10,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// registerLogBlame creates the "log.blame" tool.
+// Translates optional filters into GET /api/v1/logs/blame.
 func registerLogBlame(s *server.MCPServer, backend *client.BackendClient) {
 	tool := mcp.NewTool("log.blame",
 		mcp.WithDescription("Get blame information showing which agent modified which files"),
@@ -27,6 +29,7 @@ func registerLogBlame(s *server.MCPServer, backend *client.BackendClient) {
 	s.AddTool(tool, handleLogBlame(backend))
 }
 
+// handleLogBlame returns blame info (which agent modified which files).
 func handleLogBlame(backend *client.BackendClient) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := args(request)

@@ -9,6 +9,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// registerMemoryRecall creates the "memory.recall" tool.
+// Translates a key (and optional namespace) into POST /api/v1/memory/recall.
 func registerMemoryRecall(s *server.MCPServer, backend *client.BackendClient) {
 	tool := mcp.NewTool("memory.recall",
 		mcp.WithDescription("Recall a specific memory by key"),
@@ -24,6 +26,7 @@ func registerMemoryRecall(s *server.MCPServer, backend *client.BackendClient) {
 	s.AddTool(tool, handleMemoryRecall(backend))
 }
 
+// handleMemoryRecall retrieves a single memory entry by its exact key.
 func handleMemoryRecall(backend *client.BackendClient) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := args(request)

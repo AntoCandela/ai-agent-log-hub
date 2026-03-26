@@ -9,6 +9,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// registerMemorySearch creates the "memory.search" tool.
+// Translates a search query into POST /api/v1/memory/search.
 func registerMemorySearch(s *server.MCPServer, backend *client.BackendClient) {
 	tool := mcp.NewTool("memory.search",
 		mcp.WithDescription("Search memories by semantic similarity"),
@@ -27,6 +29,7 @@ func registerMemorySearch(s *server.MCPServer, backend *client.BackendClient) {
 	s.AddTool(tool, handleMemorySearch(backend))
 }
 
+// handleMemorySearch performs a semantic similarity search over stored memories.
 func handleMemorySearch(backend *client.BackendClient) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := args(request)

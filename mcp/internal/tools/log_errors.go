@@ -10,6 +10,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// registerLogErrors creates the "log.errors" tool.
+// Translates optional filters into GET /api/v1/logs/errors.
 func registerLogErrors(s *server.MCPServer, backend *client.BackendClient) {
 	tool := mcp.NewTool("log.errors",
 		mcp.WithDescription("Search for error log events"),
@@ -30,6 +32,7 @@ func registerLogErrors(s *server.MCPServer, backend *client.BackendClient) {
 	s.AddTool(tool, handleLogErrors(backend))
 }
 
+// handleLogErrors searches for error-level log events with optional filters.
 func handleLogErrors(backend *client.BackendClient) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := args(request)

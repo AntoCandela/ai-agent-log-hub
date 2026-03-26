@@ -9,6 +9,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// registerLogFiles creates the "log.files" tool.
+// Translates a session_id into GET /api/v1/sessions/<id>/files.
 func registerLogFiles(s *server.MCPServer, backend *client.BackendClient) {
 	tool := mcp.NewTool("log.files",
 		mcp.WithDescription("Get files touched during a session"),
@@ -21,6 +23,7 @@ func registerLogFiles(s *server.MCPServer, backend *client.BackendClient) {
 	s.AddTool(tool, handleLogFiles(backend))
 }
 
+// handleLogFiles returns the list of files touched during a session.
 func handleLogFiles(backend *client.BackendClient) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		sessionID, _ := args(request)["session_id"].(string)

@@ -10,6 +10,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// registerLogSystem creates the "log.system" tool.
+// Translates optional filters into GET /api/v1/system.
 func registerLogSystem(s *server.MCPServer, backend *client.BackendClient) {
 	tool := mcp.NewTool("log.system",
 		mcp.WithDescription("Query system-level events (build, test, deploy)"),
@@ -27,6 +29,7 @@ func registerLogSystem(s *server.MCPServer, backend *client.BackendClient) {
 	s.AddTool(tool, handleLogSystem(backend))
 }
 
+// handleLogSystem queries system-level events (build, test, deploy).
 func handleLogSystem(backend *client.BackendClient) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := args(request)

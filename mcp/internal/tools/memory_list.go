@@ -10,6 +10,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// registerMemoryList creates the "memory.list" tool.
+// Translates optional namespace/limit filters into GET /api/v1/memory.
 func registerMemoryList(s *server.MCPServer, backend *client.BackendClient) {
 	tool := mcp.NewTool("memory.list",
 		mcp.WithDescription("List all stored memory entries"),
@@ -24,6 +26,7 @@ func registerMemoryList(s *server.MCPServer, backend *client.BackendClient) {
 	s.AddTool(tool, handleMemoryList(backend))
 }
 
+// handleMemoryList returns all stored memory entries, optionally filtered.
 func handleMemoryList(backend *client.BackendClient) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := args(request)

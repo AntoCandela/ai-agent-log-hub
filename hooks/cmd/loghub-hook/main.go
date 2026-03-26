@@ -1,3 +1,26 @@
+// Package main is the entry point for the loghub-hook binary.
+//
+// Claude Code Hooks
+// -----------------
+// Claude Code supports "hooks" -- small executables that run automatically at
+// specific points in the agent's lifecycle (e.g., after a tool call finishes).
+// Claude Code invokes the hook binary, passes a JSON payload on **stdin**
+// describing what just happened (tool name, input, output, duration, etc.),
+// and expects the process to exit quickly without producing output on stdout.
+//
+// Fire-and-Forget Pattern
+// -----------------------
+// This binary is designed to never interfere with Claude Code's normal
+// operation. Every error path calls os.Exit(0) silently -- no stderr output,
+// no non-zero exit codes. A 5-second HTTP timeout ensures the hook does not
+// hang. If the backend is down or the payload is malformed, the hook simply
+// exits without reporting the failure. This is intentional: a logging
+// side-channel must never break the primary tool.
+//
+// Configuration (environment variables):
+//   - LOGHUB_URL      -- backend base URL (default http://localhost:4800)
+//   - LOGHUB_API_KEY  -- optional Bearer token
+//   - LOGHUB_AGENT_ID -- agent identifier (default "claude-code-<hostname>")
 package main
 
 import (
@@ -12,7 +35,7 @@ import (
 )
 
 func main() {
-	// Read configuration from environment.
+	// --- Configuration from environment ---
 	loghubURL := os.Getenv("LOGHUB_URL")
 	if loghubURL == "" {
 		loghubURL = "http://localhost:4800"
@@ -24,21 +47,24 @@ func main() {
 		agentID = "claude-code-" + hostname
 	}
 
-	// Read hook payload from stdin.
+	// --- Read the hook payload from stdin ---
+	// Claude Code pipes a JSON object describing the tool call into stdin.
 	input, err := io.ReadAll(os.Stdin)
 	if err != nil || len(input) == 0 {
-		os.Exit(0) // Silent exit — don't break Claude Code.
+		os.Exit(0) // Silent exit -- never break Claude Code.
 	}
 
-	// Parse and build the event.
+	// --- Parse the JSON and build a LogHubEvent ---
 	hookInput, err := capture.ParseHookInput(input)
 	if err != nil {
-		os.Exit(0) // Silent exit.
+		os.Exit(0) // Silent exit -- malformed payload is not fatal.
 	}
 
 	event := capture.BuildEvent(hookInput, agentID)
 
-	// POST to the Log Hub backend (fire-and-forget with short timeout).
+	// --- POST the event to the Log Hub backend ---
+	// This is fire-and-forget: a short timeout prevents blocking, and any
+	// error is swallowed so Claude Code is never affected.
 	body, err := json.Marshal(event)
 	if err != nil {
 		os.Exit(0)
@@ -56,7 +82,7 @@ func main() {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		os.Exit(0) // Silent — don't break Claude Code.
+		os.Exit(0) // Silent -- backend might be unreachable.
 	}
 	resp.Body.Close()
 }

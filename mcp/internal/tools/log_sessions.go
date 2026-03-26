@@ -10,6 +10,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// registerLogSessions creates the "log.sessions" tool.
+// Translates optional filters into GET /api/v1/sessions.
 func registerLogSessions(s *server.MCPServer, backend *client.BackendClient) {
 	tool := mcp.NewTool("log.sessions",
 		mcp.WithDescription("List all sessions with optional filters"),
@@ -24,6 +26,7 @@ func registerLogSessions(s *server.MCPServer, backend *client.BackendClient) {
 	s.AddTool(tool, handleLogSessions(backend))
 }
 
+// handleLogSessions lists sessions with optional agent_id/limit filters.
 func handleLogSessions(backend *client.BackendClient) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := args(request)

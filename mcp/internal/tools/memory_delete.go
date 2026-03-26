@@ -9,6 +9,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// registerMemoryDelete creates the "memory.delete" tool.
+// Translates a key into DELETE /api/v1/memory/<key>.
 func registerMemoryDelete(s *server.MCPServer, backend *client.BackendClient) {
 	tool := mcp.NewTool("memory.delete",
 		mcp.WithDescription("Delete a memory entry by key"),
@@ -21,6 +23,7 @@ func registerMemoryDelete(s *server.MCPServer, backend *client.BackendClient) {
 	s.AddTool(tool, handleMemoryDelete(backend))
 }
 
+// handleMemoryDelete removes a memory entry by its key.
 func handleMemoryDelete(backend *client.BackendClient) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		key, _ := args(request)["key"].(string)

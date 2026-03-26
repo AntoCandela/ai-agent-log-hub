@@ -10,6 +10,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// registerLogQuery creates the "log.query" tool.
+// Translates MCP arguments into GET /api/v1/logs with query-string filters.
 func registerLogQuery(s *server.MCPServer, backend *client.BackendClient) {
 	tool := mcp.NewTool("log.query",
 		mcp.WithDescription("Query log events with optional filters"),
@@ -37,6 +39,8 @@ func registerLogQuery(s *server.MCPServer, backend *client.BackendClient) {
 	s.AddTool(tool, handleLogQuery(backend))
 }
 
+// handleLogQuery maps optional MCP arguments to URL query parameters and
+// returns the backend's filtered log list.
 func handleLogQuery(backend *client.BackendClient) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := args(request)

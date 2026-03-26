@@ -9,6 +9,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// registerLogTrace creates the "log.trace" tool.
+// Translates a trace_id into GET /api/v1/traces/<id>.
 func registerLogTrace(s *server.MCPServer, backend *client.BackendClient) {
 	tool := mcp.NewTool("log.trace",
 		mcp.WithDescription("Get all events associated with a trace ID"),
@@ -21,6 +23,7 @@ func registerLogTrace(s *server.MCPServer, backend *client.BackendClient) {
 	s.AddTool(tool, handleLogTrace(backend))
 }
 
+// handleLogTrace returns all events associated with a distributed trace ID.
 func handleLogTrace(backend *client.BackendClient) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		traceID, _ := args(request)["trace_id"].(string)

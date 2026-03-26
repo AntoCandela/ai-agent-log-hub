@@ -9,6 +9,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// registerMemoryStore creates the "memory.store" tool.
+// Translates key/value/namespace/metadata into POST /api/v1/memory.
 func registerMemoryStore(s *server.MCPServer, backend *client.BackendClient) {
 	tool := mcp.NewTool("memory.store",
 		mcp.WithDescription("Store a key-value memory entry for later recall"),
@@ -31,6 +33,7 @@ func registerMemoryStore(s *server.MCPServer, backend *client.BackendClient) {
 	s.AddTool(tool, handleMemoryStore(backend))
 }
 
+// handleMemoryStore persists a key-value memory entry on the backend.
 func handleMemoryStore(backend *client.BackendClient) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := args(request)

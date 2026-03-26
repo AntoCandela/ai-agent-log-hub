@@ -9,6 +9,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// registerLogSummary creates the "log.summary" tool.
+// Translates a session_id into GET /api/v1/sessions/<id>/summary.
 func registerLogSummary(s *server.MCPServer, backend *client.BackendClient) {
 	tool := mcp.NewTool("log.summary",
 		mcp.WithDescription("Get a summary of a session including event counts and timeline"),
@@ -21,6 +23,8 @@ func registerLogSummary(s *server.MCPServer, backend *client.BackendClient) {
 	s.AddTool(tool, handleLogSummary(backend))
 }
 
+// handleLogSummary returns an aggregate summary (event counts, timeline) for
+// a session.
 func handleLogSummary(backend *client.BackendClient) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		sessionID, _ := args(request)["session_id"].(string)
