@@ -10,34 +10,42 @@ import (
 )
 
 // SummaryGenerator generates a summary for a closed session.
+// This interface is implemented by SummaryService and injected into
+// SessionService so that a summary is automatically created when a session closes.
 type SummaryGenerator interface {
 	GenerateForSession(ctx context.Context, session *model.Session) error
 }
 
-// sessionRepo is the minimal interface SessionService needs from the repository layer.
+// sessionRepo is the minimal interface SessionService needs from the repository
+// layer for session CRUD operations.
 type sessionRepo interface {
 	FindActiveByToken(ctx context.Context, agentID, sessionToken string) (*model.Session, error)
 	Create(ctx context.Context, s *model.Session) error
 	Close(ctx context.Context, sessionID uuid.UUID) error
 }
 
-// sessionAgentRepo is the slice of AgentRepo that SessionService needs.
+// sessionAgentRepo is the slice of AgentRepo that SessionService needs to keep
+// the agent's session counter in sync.
 type sessionAgentRepo interface {
 	IncrementSessions(ctx context.Context, agentID string) error
 }
 
-// sessionGetter extends the session repo interface with GetByID for summary
-// generation after close.
+// sessionGetter extends the session repo interface with GetByID, which is
+// needed to reload the session after closing it so that the summary generator
+// receives the full session data (including ended_at).
 type sessionGetter interface {
 	GetByID(ctx context.Context, sessionID uuid.UUID) (*model.Session, error)
 }
 
-// SessionService handles business logic for session lifecycle.
+// SessionService handles business logic for session lifecycle, including:
+//   - Session resolution: finding or creating sessions for incoming events.
+//   - Session closing: marking sessions as closed and triggering summary generation.
+//   - Timeout detection: used by a background worker to close idle sessions.
 type SessionService struct {
-	sessions  sessionRepo
-	agents    sessionAgentRepo
-	getter    sessionGetter
-	summarize SummaryGenerator // nil = skip summary generation
+	sessions  sessionRepo      // CRUD for session records.
+	agents    sessionAgentRepo // For incrementing the agent's session counter.
+	getter    sessionGetter    // For reloading session data after close (used by summarizer).
+	summarize SummaryGenerator // nil = skip summary generation on close.
 }
 
 // NewSessionService creates a SessionService that delegates persistence to the
@@ -56,6 +64,19 @@ func (s *SessionService) SetSummaryGenerator(gen SummaryGenerator, getter sessio
 // ResolveSession finds the active session matching agentID + sessionToken, or
 // creates a new one if none exists. When a new session is created the agent's
 // total_sessions counter is atomically incremented.
+//
+// Session resolution flow:
+//   1. Look up an existing active session by (agentID, sessionToken).
+//   2. If found, return it — all subsequent events will be associated with this
+//      session.
+//   3. If not found, create a new session row in the database with status
+//      "active", and increment the agent's total_sessions counter.
+//
+// This design means the client does not need to explicitly "start" a session.
+// It just sends events with a session token, and the backend lazily creates the
+// session on the first event. A background "timeout worker" (see
+// SessionRepo.FindTimedOut) periodically closes sessions that have been idle
+// for too long.
 func (s *SessionService) ResolveSession(
 	ctx context.Context,
 	agentID, sessionToken string,
@@ -91,6 +112,10 @@ func (s *SessionService) ResolveSession(
 
 // CloseSession marks the session as closed and triggers summary generation
 // if a SummaryGenerator has been configured.
+//
+// Summary generation is best-effort: if it fails, the session is still
+// successfully closed. This prevents summary bugs from blocking the normal
+// session lifecycle. Errors are logged but not propagated to the caller.
 func (s *SessionService) CloseSession(ctx context.Context, sessionID uuid.UUID) error {
 	if err := s.sessions.Close(ctx, sessionID); err != nil {
 		return fmt.Errorf("SessionService.CloseSession: %w", err)

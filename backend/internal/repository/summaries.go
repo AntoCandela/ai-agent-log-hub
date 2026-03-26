@@ -9,7 +9,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// SummaryRepo provides database access for session_summaries.
+// SummaryRepo provides database access for the session_summaries table.
+// A session summary is an aggregated report generated when a session closes,
+// containing statistics like files modified, tools used, errors encountered,
+// and a human-readable summary text. Each session has at most one summary.
 type SummaryRepo struct {
 	pool *pgxpool.Pool
 }
@@ -21,7 +24,13 @@ func NewSummaryRepo(pool *pgxpool.Pool) *SummaryRepo {
 
 // Create inserts a new session summary row, populating ID and CreatedAt from
 // the database RETURNING clause.
+//
+// The INSERT stores all the aggregated JSON fields (files_modified, tools_used,
+// commits, errors, timeline) as JSONB columns, and the summary_text as plain
+// text. RETURNING gives back the server-generated UUID primary key and the
+// creation timestamp without needing a second query.
 func (r *SummaryRepo) Create(ctx context.Context, summary *model.SessionSummary) error {
+	// Query: insert a session summary and return the auto-generated id and timestamp.
 	const q = `
 		INSERT INTO session_summaries
 			(session_id, agent_id, duration_seconds, event_count,

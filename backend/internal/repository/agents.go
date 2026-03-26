@@ -1,3 +1,16 @@
+// Package repository implements the data-access layer for the ai-agent-log-hub
+// backend. Each "*Repo" struct wraps a pgxpool.Pool — a thread-safe PostgreSQL
+// connection pool provided by the pgx library (github.com/jackc/pgx/v5/pgxpool).
+//
+// pgxpool.Pool manages a pool of database connections behind the scenes: when a
+// query is executed, the pool lends an idle connection (or opens a new one) and
+// returns it when the query completes. This avoids the overhead of opening a
+// fresh TCP connection for every single database call.
+//
+// A common pattern you will see throughout this package is the SQL "UPSERT"
+// (INSERT ... ON CONFLICT ... DO UPDATE). This is a single atomic statement
+// that inserts a row if it does not exist, or updates it if it already does,
+// avoiding the need for a separate "check then insert" round-trip.
 package repository
 
 import (
@@ -9,7 +22,10 @@ import (
 )
 
 // AgentRepo provides database access for agent records.
+// It holds a reference to a pgxpool.Pool — a connection pool that safely shares
+// database connections across many goroutines (concurrent tasks).
 type AgentRepo struct {
+	// db is the PostgreSQL connection pool used for all queries in this repo.
 	db *pgxpool.Pool
 }
 
@@ -19,13 +35,20 @@ func NewAgentRepo(db *pgxpool.Pool) *AgentRepo {
 }
 
 // FindByID retrieves an agent by its ID. Returns nil, nil when not found.
+//
+// The SQL selects all columns from the agents table where agent_id matches the
+// provided value ($1 is a placeholder that pgx fills with agentID safely,
+// preventing SQL injection).
 func (r *AgentRepo) FindByID(ctx context.Context, agentID string) (*model.Agent, error) {
+	// Query: look up a single agent row by its primary key (agent_id).
 	const q = `
 		SELECT agent_id, display_name, status, first_seen, last_seen,
 		       total_sessions, total_events, metadata, created_at, updated_at
 		FROM agents
 		WHERE agent_id = $1`
 
+	// QueryRow returns at most one row. Scan reads the column values into the
+	// struct fields in the same order they appear in the SELECT list.
 	row := r.db.QueryRow(ctx, q, agentID)
 	a := &model.Agent{}
 	err := row.Scan(
@@ -45,6 +68,18 @@ func (r *AgentRepo) FindByID(ctx context.Context, agentID string) (*model.Agent,
 }
 
 // Upsert inserts an agent or updates last_seen if a record already exists.
+//
+// This uses the PostgreSQL "UPSERT" pattern:
+//   INSERT ... ON CONFLICT (agent_id) DO UPDATE ...
+//
+// How it works:
+//   1. Try to INSERT a new row with the given agent_id.
+//   2. If a row with that agent_id already exists (a conflict on the unique
+//      primary key), instead of failing, run the DO UPDATE clause which
+//      refreshes the last_seen and updated_at timestamps to the current time.
+//
+// This is done in a single SQL statement, so it is atomic — no race conditions
+// can occur even if two requests try to register the same agent at once.
 func (r *AgentRepo) Upsert(ctx context.Context, agentID string) error {
 	const q = `
 		INSERT INTO agents (agent_id)
@@ -92,9 +127,11 @@ func (r *AgentRepo) UpdateDisplayName(ctx context.Context, agentID, displayName 
 
 // ListOptions controls filtering and pagination for List.
 type ListOptions struct {
-	// Status filters by agent status. Empty string means all statuses.
+	// Status filters by agent status (e.g. "active", "idle"). Empty string means all statuses.
 	Status string
-	Limit  int
+	// Limit is the maximum number of agents to return in one page.
+	Limit int
+	// Offset is the number of rows to skip (for pagination: page 2 with limit 20 uses offset 20).
 	Offset int
 }
 
@@ -105,6 +142,13 @@ type ListResult struct {
 }
 
 // List returns a paginated list of agents and the total count matching the filter.
+//
+// The method runs two queries:
+//   1. A COUNT(*) query to find out how many agents match the filter in total
+//      (ignoring pagination). This total is returned alongside the page so that
+//      the frontend can show "page 3 of 12" style navigation.
+//   2. A SELECT query with LIMIT/OFFSET to fetch just the current page of agents,
+//      ordered by most-recently-seen first.
 func (r *AgentRepo) List(ctx context.Context, opts ListOptions) (*ListResult, error) {
 	var (
 		countQ string
@@ -188,7 +232,12 @@ func (r *AgentRepo) SetStatus(ctx context.Context, agentID, status string) error
 }
 
 // IncrementSessions atomically increments total_sessions for the given agent.
+//
+// The SQL "total_sessions = total_sessions + 1" is atomic — PostgreSQL
+// guarantees that concurrent increments will not lose updates because the read
+// and write happen within the same statement.
 func (r *AgentRepo) IncrementSessions(ctx context.Context, agentID string) error {
+	// Query: add 1 to the agent's session counter and refresh updated_at.
 	const q = `
 		UPDATE agents
 		SET total_sessions = total_sessions + 1,

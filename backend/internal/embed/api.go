@@ -10,16 +10,25 @@ import (
 	"time"
 )
 
-// APIEmbedder calls an external embedding API (e.g. OpenAI, Voyage).
+// APIEmbedder calls an external embedding API over the internet (e.g. OpenAI's
+// /v1/embeddings, Voyage AI, or any service that follows the same request/response
+// format). This is the "external API pattern": the embedding computation
+// happens on a remote server, and this client just sends HTTP requests.
+//
+// The request format follows the OpenAI convention:
+//   { "input": "text or array of texts", "model": "model-name" }
+// and the response contains an array of { "embedding": [float, ...] } objects.
 type APIEmbedder struct {
-	url    string
-	apiKey string
-	model  string
-	dims   int
-	client *http.Client
+	url    string       // The embedding API endpoint URL.
+	apiKey string       // Bearer token for authentication (may be empty if not required).
+	model  string       // Model name to request (e.g. "text-embedding-ada-002").
+	dims   int          // Expected dimensionality of the output vectors.
+	client *http.Client // HTTP client with a 30-second timeout.
 }
 
 // NewAPIEmbedder creates an APIEmbedder for an external embedding API.
+// The url parameter is required; apiKey is optional but recommended for
+// authenticated services.
 func NewAPIEmbedder(url, apiKey, model string, dims int) (*APIEmbedder, error) {
 	if url == "" {
 		return nil, fmt.Errorf("API embedding URL is required")
@@ -35,19 +44,23 @@ func NewAPIEmbedder(url, apiKey, model string, dims int) (*APIEmbedder, error) {
 	}, nil
 }
 
+// apiEmbedRequest is the JSON body sent to the external embedding API.
 type apiEmbedRequest struct {
-	Input any    `json:"input"`
-	Model string `json:"model"`
+	Input any    `json:"input"` // A single string or an array of strings.
+	Model string `json:"model"` // Which model to use for embedding.
 }
 
+// apiEmbedResponseData holds one embedding vector from the API response.
 type apiEmbedResponseData struct {
 	Embedding []float32 `json:"embedding"`
 }
 
+// apiEmbedResponse is the JSON body returned by the external embedding API.
 type apiEmbedResponse struct {
-	Data []apiEmbedResponseData `json:"data"`
+	Data []apiEmbedResponseData `json:"data"` // One entry per input text.
 }
 
+// Embed sends a single text to the external API and returns its embedding vector.
 func (e *APIEmbedder) Embed(ctx context.Context, text string) ([]float32, error) {
 	reqBody := apiEmbedRequest{
 		Input: text,
@@ -66,6 +79,7 @@ func (e *APIEmbedder) Embed(ctx context.Context, text string) ([]float32, error)
 	return result.Data[0].Embedding, nil
 }
 
+// EmbedBatch sends multiple texts to the external API in one HTTP call.
 func (e *APIEmbedder) EmbedBatch(ctx context.Context, texts []string) ([][]float32, error) {
 	reqBody := apiEmbedRequest{
 		Input: texts,
@@ -85,10 +99,14 @@ func (e *APIEmbedder) EmbedBatch(ctx context.Context, texts []string) ([][]float
 	return embeddings, nil
 }
 
+// Dimensions returns the configured vector dimensionality.
 func (e *APIEmbedder) Dimensions() int {
 	return e.dims
 }
 
+// doRequest is the shared HTTP call logic for Embed and EmbedBatch. It
+// marshals the request, sends it with optional Bearer auth, and decodes the
+// JSON response.
 func (e *APIEmbedder) doRequest(ctx context.Context, reqBody apiEmbedRequest) (*apiEmbedResponse, error) {
 	body, err := json.Marshal(reqBody)
 	if err != nil {

@@ -11,6 +11,9 @@ import (
 )
 
 // MemoryRepo handles persistence for agent memories.
+// A "memory" is a key-value pair scoped to an agent, allowing agents to store
+// and retrieve persistent state (e.g. user preferences, learned patterns).
+// Memories can optionally be shared across agents.
 type MemoryRepo struct {
 	pool *pgxpool.Pool
 }
@@ -22,6 +25,15 @@ func NewMemoryRepo(pool *pgxpool.Pool) *MemoryRepo {
 
 // Upsert inserts a new memory or updates an existing one keyed by (agent_id, key).
 // On return the memory's MemoryID, CreatedAt and UpdatedAt fields are populated.
+//
+// This uses the UPSERT pattern with ON CONFLICT (agent_id, key):
+//   - The table has a unique constraint on the (agent_id, key) pair, meaning
+//     each agent can have at most one memory with a given key.
+//   - If no row exists for this agent+key, a new row is inserted.
+//   - If a row already exists, the DO UPDATE clause overwrites value, tags,
+//     shared, and refreshes updated_at.
+//   - RETURNING gives back the memory_id and timestamps so the caller has the
+//     full record without a second query.
 func (r *MemoryRepo) Upsert(ctx context.Context, m *model.Memory) error {
 	tags := m.Tags
 	if tags == nil {
@@ -29,6 +41,7 @@ func (r *MemoryRepo) Upsert(ctx context.Context, m *model.Memory) error {
 	}
 
 	err := r.pool.QueryRow(ctx,
+		// Query: insert or update a memory keyed by (agent_id, key).
 		`INSERT INTO memories (agent_id, session_id, key, value, tags, shared)
 		 VALUES ($1, $2, $3, $4, $5, $6)
 		 ON CONFLICT (agent_id, key) DO UPDATE
@@ -62,6 +75,8 @@ func (r *MemoryRepo) GetByKey(ctx context.Context, agentID, key string) (*model.
 
 // List returns memories for an agent, optionally filtered by tags (ANY overlap).
 // Results are ordered by updated_at DESC. Returns the slice and total count.
+// The tags filter uses the PostgreSQL array overlap operator (&&): it matches
+// rows whose tags array shares at least one element with the provided tags.
 func (r *MemoryRepo) List(ctx context.Context, agentID string, tags []string, limit, offset int) ([]model.Memory, int, error) {
 	var conditions []string
 	var args []any
