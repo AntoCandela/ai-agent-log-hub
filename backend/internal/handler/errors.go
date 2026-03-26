@@ -38,9 +38,9 @@ func NewErrorHandler(eventRepo ErrorSearcher) *ErrorHandler {
 // within the same session. This gives developers a mini timeline around
 // each failure.
 type errorWithContext struct {
-	Error   model.AgentEvent   `json:"error"`
-	Before  []model.AgentEvent `json:"before"`
-	After   []model.AgentEvent `json:"after"`
+	Error  model.AgentEvent   `json:"error"`
+	Before []model.AgentEvent `json:"before"`
+	After  []model.AgentEvent `json:"after"`
 }
 
 // SearchErrors handles GET /api/v1/logs/errors.

@@ -66,11 +66,11 @@ func (s *SessionService) SetSummaryGenerator(gen SummaryGenerator, getter sessio
 // total_sessions counter is atomically incremented.
 //
 // Session resolution flow:
-//   1. Look up an existing active session by (agentID, sessionToken).
-//   2. If found, return it — all subsequent events will be associated with this
-//      session.
-//   3. If not found, create a new session row in the database with status
-//      "active", and increment the agent's total_sessions counter.
+//  1. Look up an existing active session by (agentID, sessionToken).
+//  2. If found, return it — all subsequent events will be associated with this
+//     session.
+//  3. If not found, create a new session row in the database with status
+//     "active", and increment the agent's total_sessions counter.
 //
 // This design means the client does not need to explicitly "start" a session.
 // It just sends events with a session token, and the backend lazily creates the

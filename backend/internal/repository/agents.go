@@ -70,13 +70,14 @@ func (r *AgentRepo) FindByID(ctx context.Context, agentID string) (*model.Agent,
 // Upsert inserts an agent or updates last_seen if a record already exists.
 //
 // This uses the PostgreSQL "UPSERT" pattern:
-//   INSERT ... ON CONFLICT (agent_id) DO UPDATE ...
+//
+//	INSERT ... ON CONFLICT (agent_id) DO UPDATE ...
 //
 // How it works:
-//   1. Try to INSERT a new row with the given agent_id.
-//   2. If a row with that agent_id already exists (a conflict on the unique
-//      primary key), instead of failing, run the DO UPDATE clause which
-//      refreshes the last_seen and updated_at timestamps to the current time.
+//  1. Try to INSERT a new row with the given agent_id.
+//  2. If a row with that agent_id already exists (a conflict on the unique
+//     primary key), instead of failing, run the DO UPDATE clause which
+//     refreshes the last_seen and updated_at timestamps to the current time.
 //
 // This is done in a single SQL statement, so it is atomic — no race conditions
 // can occur even if two requests try to register the same agent at once.
@@ -144,11 +145,11 @@ type ListResult struct {
 // List returns a paginated list of agents and the total count matching the filter.
 //
 // The method runs two queries:
-//   1. A COUNT(*) query to find out how many agents match the filter in total
-//      (ignoring pagination). This total is returned alongside the page so that
-//      the frontend can show "page 3 of 12" style navigation.
-//   2. A SELECT query with LIMIT/OFFSET to fetch just the current page of agents,
-//      ordered by most-recently-seen first.
+//  1. A COUNT(*) query to find out how many agents match the filter in total
+//     (ignoring pagination). This total is returned alongside the page so that
+//     the frontend can show "page 3 of 12" style navigation.
+//  2. A SELECT query with LIMIT/OFFSET to fetch just the current page of agents,
+//     ordered by most-recently-seen first.
 func (r *AgentRepo) List(ctx context.Context, opts ListOptions) (*ListResult, error) {
 	var (
 		countQ string

@@ -38,9 +38,9 @@ type RateLimitConfig struct {
 // the same time.
 type rateLimiter struct {
 	limiters map[string]*rate.Limiter // key = client IP address
-	mu       sync.Mutex              // protects the limiters map
-	rate     rate.Limit              // tokens per second
-	burst    int                     // max burst size
+	mu       sync.Mutex               // protects the limiters map
+	rate     rate.Limit               // tokens per second
+	burst    int                      // max burst size
 }
 
 // newRateLimiter creates a rateLimiter with the given rate and burst settings.

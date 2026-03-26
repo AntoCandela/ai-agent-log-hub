@@ -34,13 +34,13 @@ type embeddingStore interface {
 
 // SummaryService generates session summaries from event data. When a session
 // closes, this service:
-//   1. Fetches all events for the session from the database.
-//   2. Aggregates them into statistics (files modified, tools used, commits,
-//      errors, timeline).
-//   3. Generates a human-readable summary text.
-//   4. Stores the summary in the session_summaries table.
-//   5. (Embedding pipeline) Converts the summary text into a vector embedding
-//      and stores it in the embeddings table for future semantic search.
+//  1. Fetches all events for the session from the database.
+//  2. Aggregates them into statistics (files modified, tools used, commits,
+//     errors, timeline).
+//  3. Generates a human-readable summary text.
+//  4. Stores the summary in the session_summaries table.
+//  5. (Embedding pipeline) Converts the summary text into a vector embedding
+//     and stores it in the embeddings table for future semantic search.
 //
 // The embedding pipeline (step 5) is optional: if no Embedder is configured,
 // it is silently skipped. If embedding fails, the summary is still saved.

@@ -195,9 +195,9 @@ func (r *SystemEventRepo) Query(ctx context.Context, filters SystemEventFilters)
 // system events to agent sessions by matching trace IDs.
 //
 // How it works:
-//   1. Find system_events rows that have a trace_id but no session_id yet.
-//   2. JOIN them against agent_events that share the same trace_id.
-//   3. Copy the agent_event's session_id into the system_event.
+//  1. Find system_events rows that have a trace_id but no session_id yet.
+//  2. JOIN them against agent_events that share the same trace_id.
+//  3. Copy the agent_event's session_id into the system_event.
 //
 // This lets the UI show infrastructure-level telemetry (HTTP spans, database
 // queries, etc.) alongside the agent events that triggered them, because they

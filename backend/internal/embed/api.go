@@ -16,7 +16,9 @@ import (
 // happens on a remote server, and this client just sends HTTP requests.
 //
 // The request format follows the OpenAI convention:
-//   { "input": "text or array of texts", "model": "model-name" }
+//
+//	{ "input": "text or array of texts", "model": "model-name" }
+//
 // and the response contains an array of { "embedding": [float, ...] } objects.
 type APIEmbedder struct {
 	url    string       // The embedding API endpoint URL.

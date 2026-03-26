@@ -141,14 +141,15 @@ type otlpLogRecord struct {
 // TracesHandler handles POST /v1/traces (OTLP JSON).
 //
 // Span-to-event conversion:
-//   Each OTLP span is converted to one model.SystemEvent:
-//   - trace_id and span_id are normalized to lowercase hex for consistency.
-//   - The span name becomes the event_name.
-//   - The span status code is mapped to a severity string (error vs info).
-//   - Duration is computed from start/end nanosecond timestamps.
-//   - Span attributes and resource attributes are stored as JSON.
-//   - source_type is always "otlp"; source_service comes from the resource's
-//     "service.name" attribute.
+//
+//	Each OTLP span is converted to one model.SystemEvent:
+//	- trace_id and span_id are normalized to lowercase hex for consistency.
+//	- The span name becomes the event_name.
+//	- The span status code is mapped to a severity string (error vs info).
+//	- Duration is computed from start/end nanosecond timestamps.
+//	- Span attributes and resource attributes are stored as JSON.
+//	- source_type is always "otlp"; source_service comes from the resource's
+//	  "service.name" attribute.
 func (h *OTLPHandler) TracesHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
