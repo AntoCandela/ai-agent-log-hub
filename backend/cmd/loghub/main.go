@@ -128,6 +128,8 @@ func main() {
 	sessionService := service.NewSessionService(sessionRepo, agentRepo)
 
 	eventHandler := handler.NewEventHandler(agentService, sessionService, agentEventRepo)
+	logHandler := handler.NewLogHandler(agentEventRepo)
+	sessionHandler := handler.NewSessionHandler(sessionRepo, agentEventRepo)
 	otlpHandler := otlp.NewOTLPHandler(systemEventRepo)
 
 	// OTLP receivers (no auth — telemetry endpoints)
@@ -140,6 +142,15 @@ func main() {
 			Enabled: cfg.AuthEnabled,
 		}))
 		r.Post("/events", eventHandler.IngestEvents)
+		r.Get("/logs", logHandler.QueryLogs)
+		r.Route("/sessions", func(r chi.Router) {
+			r.Get("/", sessionHandler.ListSessions)
+			r.Route("/{sessionID}", func(r chi.Router) {
+				r.Get("/", sessionHandler.GetSession)
+				r.Get("/files", sessionHandler.GetSessionFiles)
+				r.Get("/summary", sessionHandler.GetSessionSummary)
+			})
+		})
 	})
 
 	// Background: periodically link system events to sessions via trace_id.
