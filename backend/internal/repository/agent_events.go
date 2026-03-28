@@ -76,7 +76,7 @@ func (r *AgentEventRepo) InsertBatch(ctx context.Context, events []model.AgentEv
 
 	// SendBatch sends all queued statements to PostgreSQL in one network call.
 	results := r.pool.SendBatch(ctx, batch)
-	defer results.Close()
+	defer results.Close() //nolint:errcheck // batch close error is not actionable
 
 	// Read back the result of each INSERT. RowsAffected() returns 1 for a new
 	// insert and 0 when the ON CONFLICT clause skipped a duplicate.

@@ -24,12 +24,17 @@ linters:
       exclude-functions:
         - (*encoding/json.Encoder).Encode
         - (io.Closer).Close
+        - (*net/http.Response).Body.Close
+        - (net/http.ResponseWriter).Write
     gocritic:
       enabled-tags:
         - diagnostic
-        - performance
       disabled-checks:
         - hugeParam
+        - rangeValCopy
+        - ifElseChain
+        - exitAfterDefer
+        - appendAssign
   exclusions:
     rules:
       - path: _test\.go

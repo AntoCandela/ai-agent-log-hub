@@ -66,7 +66,7 @@ func runMigrations(dbURL string) error {
 	if err != nil {
 		return fmt.Errorf("create migrator: %w", err)
 	}
-	defer m.Close()
+	defer func() { _, _ = m.Close() }()
 
 	// m.Up() returns migrate.ErrNoChange when the database is already
 	// at the latest version — that is not an error for our purposes.

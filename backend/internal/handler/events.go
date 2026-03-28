@@ -156,19 +156,20 @@ func (h *EventHandler) IngestEvents(w http.ResponseWriter, r *http.Request) {
 	// Phase 2: Detect single object vs array by peeking at the first byte.
 	// '{' means a single event; '[' means an array of events.
 	var inputs []EventInput
-	if body[0] == '{' {
+	switch body[0] {
+	case '{':
 		var single EventInput
 		if err := json.Unmarshal(body, &single); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid JSON: "+err.Error())
 			return
 		}
 		inputs = []EventInput{single}
-	} else if body[0] == '[' {
+	case '[':
 		if err := json.Unmarshal(body, &inputs); err != nil {
 			writeError(w, http.StatusBadRequest, "invalid JSON: "+err.Error())
 			return
 		}
-	} else {
+	default:
 		writeError(w, http.StatusBadRequest, "body must be a JSON object or array")
 		return
 	}

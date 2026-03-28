@@ -1,0 +1,36 @@
+#!/bin/sh
+# Pre-commit hook: runs formatting check, lint, and tests on backend Go code.
+# Install: git config core.hooksPath .githooks
+
+set -e
+
+echo "==> Checking Go formatting..."
+UNFORMATTED=$(cd backend && gofmt -l . 2>/dev/null)
+if [ -n "$UNFORMATTED" ]; then
+    echo "ERROR: Files need formatting (run 'gofmt -w backend/'):"
+    echo "$UNFORMATTED"
+    exit 1
+fi
+
+echo "==> Running go vet..."
+cd backend && go vet ./... || exit 1
+cd ..
+
+echo "==> Running tests..."
+cd backend && go test ./... || exit 1
+cd ..
+
+# Only run golangci-lint if installed
+if command -v golangci-lint >/dev/null 2>&1; then
+    echo "==> Running golangci-lint..."
+    cd backend && golangci-lint run ./... || exit 1
+    cd ..
+elif [ -x "$HOME/go/bin/golangci-lint" ]; then
+    echo "==> Running golangci-lint..."
+    cd backend && "$HOME/go/bin/golangci-lint" run ./... || exit 1
+    cd ..
+else
+    echo "==> Skipping golangci-lint (not installed)"
+fi
+
+echo "==> All checks passed!"

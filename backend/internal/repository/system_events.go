@@ -57,7 +57,7 @@ func (r *SystemEventRepo) InsertBatch(ctx context.Context, events []model.System
 	}
 
 	results := r.pool.SendBatch(ctx, batch)
-	defer results.Close()
+	defer results.Close() //nolint:errcheck // batch close error is not actionable
 
 	accepted := 0
 	for range events {
