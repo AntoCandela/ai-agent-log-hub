@@ -1,3 +1,12 @@
+// TOCHANGE: Enhanced hook system for stack migration
+// - Add: parent_span_id, trace_id, span_id for causality tracking (REQ-22)
+// - Add: sub-agent detection when tool_name is "Agent" (CON-21 multi-agent topology)
+// - Add: severity inference from tool output (detect errors, not just hardcode "info")
+// - Add: batch sending (queue locally, flush every 10 events or 5 seconds)
+// - Add: MCP server identification from mcp__ tool name prefix
+// - Keep: sanitization, basic event capture, POST to backend
+// - See autok design fragment DES-7 (Enhanced Hook System)
+//
 // Package main is the entry point for the loghub-hook binary.
 //
 // Claude Code Hooks

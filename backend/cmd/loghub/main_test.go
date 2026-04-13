@@ -5,18 +5,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/go-chi/chi/v5"
 )
 
-func newTestRouter() *chi.Mux {
-	r := chi.NewRouter()
-	r.Get("/healthz", makeHealthzHandler(nil))
-	return r
-}
+func TestHealthz_ReturnsMigratingStatus(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"migrating","stack":"surrealdb+loom"}`))
+	})
 
-func TestHealthz_ReturnsOKStatus(t *testing.T) {
-	srv := httptest.NewServer(newTestRouter())
+	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
 	resp, err := http.Get(srv.URL + "/healthz")
@@ -38,11 +36,11 @@ func TestHealthz_ReturnsOKStatus(t *testing.T) {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	if body["status"] != "ok" {
-		t.Errorf("expected status \"ok\", got %q", body["status"])
+	if body["status"] != "migrating" {
+		t.Errorf("expected status \"migrating\", got %q", body["status"])
 	}
 
-	if body["db"] != "disconnected" {
-		t.Errorf("expected db \"disconnected\" when pool is nil, got %q", body["db"])
+	if body["stack"] != "surrealdb+loom" {
+		t.Errorf("expected stack \"surrealdb+loom\", got %q", body["stack"])
 	}
 }

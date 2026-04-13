@@ -1,3 +1,9 @@
+// TOCHANGE: Stack migration — model structs evolve for SurrealDB
+// - Add: graph-related fields (record links instead of foreign key UUIDs)
+// - Add: File, Commit, MCPServer models (new record types)
+// - Add: Relation types (Touched, CausedBy, FollowedBy, CoAccessed, etc.)
+// - Keep: core field semantics (event_type, severity, tool_name, params, result)
+// - See autok design fragment DES-2 for full SurrealDB record + relation schema
 package model
 
 import (

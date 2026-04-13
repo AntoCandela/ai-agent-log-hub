@@ -1,3 +1,9 @@
+// TOCHANGE: Stack migration to SurrealDB + Loom + loom-mcp
+// - Repository interfaces will change from pgx to SurrealDB Go SDK
+// - Business logic (EnsureExists, upsert pattern) stays
+// - Add graph edge creation: agent->owns->session on session creation
+// - See autok design fragment DES-2 (SurrealDB Graph Schema) for new data model
+//
 // Package service implements the business-logic layer for the ai-agent-log-hub
 // backend. Services sit between the HTTP handlers and the repository layer:
 // handlers parse requests and call services, services enforce business rules

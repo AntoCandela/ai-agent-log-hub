@@ -1,3 +1,11 @@
+// TOCHANGE: Stack migration to SurrealDB + Loom + loom-mcp
+// - OTLP conversion logic (span->SystemEvent, log->SystemEvent) stays
+// - This handler remains a raw HTTP handler, NOT Loom-generated (OTLP has its own proto schema)
+// - Storage changes: repository calls change from pgx to SurrealDB SDK
+// - Add: span tree reconstruction as graph edges (system_event->child_of->event)
+// - Add: Phase 2 relationship extraction on ingested system events
+// - See autok design fragment DES-1 (Phase 1-2) and DES-5 (Worker 1: Trace Correlator)
+//
 // Package otlp implements an OpenTelemetry Protocol (OTLP) receiver that
 // accepts trace and log data from any OpenTelemetry-instrumented service and
 // converts it into system events stored in the ai-agent-log-hub database.

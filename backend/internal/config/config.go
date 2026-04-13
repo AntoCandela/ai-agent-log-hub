@@ -1,3 +1,11 @@
+// TOCHANGE: Stack migration to SurrealDB + Loom + loom-mcp
+// - Replace DATABASE_URL (PostgreSQL) with SURREAL_URL, SURREAL_USER, SURREAL_PASS, SURREAL_NS, SURREAL_DB
+// - Remove MAX_DB_CONNS (SurrealDB manages connections differently)
+// - Remove MIGRATIONS_PATH (SurrealDB is schema-flexible)
+// - Keep: API_PORT, LOG_LEVEL, AUTH_ENABLED, TLS settings, EMBEDDING_* settings
+// - Keep: SESSION_TIMEOUT, RETENTION_DAYS, FRONTEND_URL
+// - See autok design fragment DES-6 for Docker Compose environment variables
+//
 // Package config loads the application's runtime configuration from
 // environment variables. Every setting has a sensible default so the
 // server can start with minimal setup (only DATABASE_URL is required).

@@ -1,3 +1,11 @@
+// TOCHANGE: Stack migration to SurrealDB + Loom + loom-mcp
+//   - Embedder interface (Embed, EmbedBatch, Dimensions) stays unchanged
+//   - Local/API/Noop implementations stay unchanged
+//   - Storage changes: vectors stored as native fields on SurrealDB records
+//     (session.embedding, memory.embedding) instead of separate embeddings table
+//   - EmbeddingRepo is dropped; embeddings are UPDATE'd onto parent records
+//   - See autok design fragment DES-2 for vector field schema
+//
 // Package embed provides a pluggable embedding system for converting text into
 // vector representations (arrays of floating-point numbers). These vectors
 // capture the semantic meaning of the text and can be compared using cosine

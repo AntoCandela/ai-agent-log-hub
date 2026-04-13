@@ -1,3 +1,10 @@
+// TOCHANGE: Stack migration to SurrealDB + Loom + loom-mcp
+// - Repository interfaces change from pgx to SurrealDB Go SDK
+// - Session resolution logic (find-or-create, lazy creation) stays
+// - Summary generation hook on close stays
+// - Add: session->spawned->session edges for multi-agent topology (CON-21)
+// - Add: auto-close via SurrealDB live queries instead of polling
+// - See autok design fragment DES-2 for new session record schema
 package service
 
 import (
